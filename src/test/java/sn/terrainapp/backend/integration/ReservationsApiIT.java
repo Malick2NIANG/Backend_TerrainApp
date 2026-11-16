@@ -23,6 +23,7 @@ import tools.jackson.databind.JsonNode;
 class ReservationsApiIT extends IntegrationTest {
 
     private static final String TEL = "77 123 45 67";
+    private static final String PIN = "2468";
 
     // ------------------------------------------------------------ outils
 
@@ -49,8 +50,8 @@ class ReservationsApiIT extends IntegrationTest {
 
     private Reponse reserver(long terrain, Instant debut, String moyen, String cle) {
         String corps = """
-                {"terrainId":%d,"debut":"%s","clientNom":"Joueur Test","clientTelephone":"%s","moyenPaiement":"%s"}
-                """.formatted(terrain, debut, TEL, moyen);
+                {"terrainId":%d,"debut":"%s","clientNom":"Joueur Test","clientTelephone":"%s","moyenPaiement":"%s","pin":"%s"}
+                """.formatted(terrain, debut, TEL, moyen, PIN);
         return executer(java.net.http.HttpRequest.newBuilder(url("/reservations"))
                 .header("Content-Type", "application/json").header("Idempotency-Key", cle)
                 .POST(java.net.http.HttpRequest.BodyPublishers.ofString(corps)).build());
@@ -126,18 +127,50 @@ class ReservationsApiIT extends IntegrationTest {
         Reponse dispo = get("/disponibilites?date=" + dans(1) + "&terrainId=" + t, null);
         assertThat(creneau(dispo, debut).get("etat").asString()).isEqualTo("RESERVE");
 
-        // Historique par numero : vue reduite, ni nom ni ticket.
-        Reponse histo = get("/reservations?telephone=771234567", null);
-        assertThat(histo.statut()).isEqualTo(200);
-        JsonNode ligne = null;
-        for (JsonNode n : histo.json()) {
-            if (n.get("id").asLong() == id) {
-                ligne = n;
+        // Le numero seul ne donne plus rien : il faut le code PIN.
+        assertThat(get("/reservations?telephone=771234567", null).statut()).isIn(401, 403, 404, 405);
+        Reponse mauvais = envoyer("POST", "/reservations/retrouver", "{\"telephone\":\"771234567\",\"pin\":\"0000\"}", null);
+        assertThat(mauvais.statut()).isEqualTo(200);
+        assertThat(mauvais.json()).isEmpty();
+        Reponse trouvees = envoyer("POST", "/reservations/retrouver", "{\"telephone\":\"77 123 45 67\",\"pin\":\"" + PIN + "\"}", null);
+        assertThat(trouvees.statut()).as(trouvees.corps()).isEqualTo(200);
+        JsonNode trouvee = null;
+        for (JsonNode n : trouvees.json()) {
+            if (n.get("reservation").get("id").asLong() == id) {
+                trouvee = n;
             }
         }
-        assertThat(ligne).isNotNull();
-        assertThat(ligne.has("codeTicket")).isFalse();
-        assertThat(ligne.has("clientNom")).isFalse();
+        assertThat(trouvee).isNotNull();
+        assertThat(trouvee.get("reservation").get("payeeLe").isNull()).isFalse();
+        // Le jeton d'acces ouvre le detail et le ticket, comme le jeton de suivi.
+        Reponse viaPin = avecJeton("/reservations/" + id, trouvee.get("jetonAcces").asString());
+        assertThat(viaPin.statut()).isEqualTo(200);
+        assertThat(viaPin.json().get("codeTicket").asString()).isEqualTo(detail.json().get("codeTicket").asString());
+        assertThat(avecJeton("/reservations/" + (id + 1), trouvee.get("jetonAcces").asString()).statut()).isEqualTo(404);
+    }
+
+    @Test
+    void codePinObligatoireEtEssaisLimites() {
+        long t = creerTerrain(10000, 60);
+        String sansPin = """
+                {"terrainId":%d,"debut":"%s","clientNom":"X","clientTelephone":"%s","moyenPaiement":"wave"}
+                """.formatted(t, a(dans(2), 10, 0), TEL);
+        Reponse r = executer(java.net.http.HttpRequest.newBuilder(url("/reservations"))
+                .header("Content-Type", "application/json").header("Idempotency-Key", UUID.randomUUID().toString())
+                .POST(java.net.http.HttpRequest.BodyPublishers.ofString(sansPin)).build());
+        assertThat(r.json().get("code").asString()).isEqualTo("PIN_REQUIS");
+
+        // 5 mauvais codes : le numero est bloque, meme avec le bon code.
+        String numero = "70 555 12 34";
+        for (int i = 0; i < 5; i++) {
+            assertThat(envoyer("POST", "/reservations/retrouver",
+                    "{\"telephone\":\"" + numero + "\",\"pin\":\"111" + i + "\"}", null).statut()).isEqualTo(200);
+        }
+        Reponse bloque = envoyer("POST", "/reservations/retrouver", "{\"telephone\":\"" + numero + "\",\"pin\":\"1234\"}", null);
+        assertThat(bloque.statut()).isEqualTo(429);
+        assertThat(bloque.json().get("code").asString()).isEqualTo("TROP_D_ESSAIS");
+        assertThat(envoyer("POST", "/reservations/retrouver", "{\"telephone\":\"771234567\",\"pin\":\"12\"}", null)
+                .statut()).isEqualTo(400);
     }
 
     @Test
@@ -320,5 +353,8 @@ class ReservationsApiIT extends IntegrationTest {
         assertThat(get("/terrains", null).statut()).isEqualTo(200);
         assertThat(get("/marque", null).json().get("nom").asString()).isNotBlank();
         assertThat(get("/horaires", null).json()).hasSize(7);
+        Reponse tendances = get("/terrains/tendances?nombre=3", null);
+        assertThat(tendances.statut()).isEqualTo(200);
+        assertThat(tendances.json().size()).isLessThanOrEqualTo(3);
     }
 }

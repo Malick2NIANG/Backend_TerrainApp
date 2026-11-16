@@ -16,6 +16,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -64,6 +66,8 @@ public class GestionTerrains {
     /** photos : galerie de l'annonce (photos et videos), le premier media est la couverture. */
     public record SaisieTerrain(@NotNull Long sportId, @NotBlank @Size(max = 80) String nom,
                                 @Size(max = 1000) String description, @Size(max = 120) String localite,
+                                @DecimalMin("-90") @DecimalMax("90") Double latitude,
+                                @DecimalMin("-180") @DecimalMax("180") Double longitude,
                                 @Size(max = 60) String surface,
                                 @Min(1) @Max(100) int capacite, List<@Size(max = 40) String> equipements,
                                 @Size(max = MAX_PHOTOS, message = "10 photos ou vidéos au maximum.") List<@NotBlank @Size(max = 500) String> photos,
@@ -162,6 +166,10 @@ public class GestionTerrains {
         }
         t.modifier(sport(s.sportId()), s.nom(), s.description(), s.localite(), s.surface(), s.capacite(),
                 s.equipements(), s.photos(), s.dureeCreneauMinutes(), s.tarifHeure(), s.actif() == null || s.actif(), s.ordre());
+        if ((s.latitude() == null) != (s.longitude() == null)) {
+            throw new RequeteInvalideException("GPS_INCOMPLET", "Position GPS : indiquez la latitude ET la longitude.", "latitude");
+        }
+        t.placer(s.latitude(), s.longitude());
         List<SaisiePlage> plages = s.plages() == null ? List.of() : s.plages();
         for (SaisiePlage p : plages) {
             if (p.debut().equals(p.fin())) {

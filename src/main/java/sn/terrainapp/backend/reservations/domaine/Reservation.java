@@ -67,6 +67,14 @@ public class Reservation {
     @Column(name = "code_ticket", nullable = false, length = 40)
     private String codeTicket;
 
+    /** Empreinte BCrypt du code PIN choisi par le client (App) ; null au comptoir. */
+    @Column(name = "pin_empreinte", length = 100)
+    private String pinEmpreinte;
+
+    /** Date du paiement (recu) : confirmation en ligne, ou creation au comptoir. */
+    @Column(name = "payee_le")
+    private Instant payeeLe;
+
     @Column(name = "scanne_le")
     private Instant scanneLe;
 
@@ -116,6 +124,13 @@ public class Reservation {
     void avantCreation() {
         creeLe = Instant.now();
         modifieLe = creeLe;
+        if (statut == StatutReservation.CONFIRMEE && payeeLe == null) {
+            payeeLe = creeLe;
+        }
+    }
+
+    public void definirPin(String empreinte) {
+        this.pinEmpreinte = empreinte;
     }
 
     @PreUpdate
@@ -128,6 +143,7 @@ public class Reservation {
             throw new ReservationInterditeException("STATUT_INCOMPATIBLE", "Cette réservation n'attend pas de paiement.");
         }
         statut = StatutReservation.CONFIRMEE;
+        payeeLe = Instant.now();
     }
 
     /** Paiement refuse ou delai depasse : le creneau est libere. */
@@ -173,6 +189,8 @@ public class Reservation {
     public String getClientTelephone() { return clientTelephone; }
     public String getJetonSuiviEmpreinte() { return jetonSuiviEmpreinte; }
     public String getCodeTicket() { return codeTicket; }
+    public String getPinEmpreinte() { return pinEmpreinte; }
+    public Instant getPayeeLe() { return payeeLe; }
     public Instant getScanneLe() { return scanneLe; }
     public Instant getCreeLe() { return creeLe; }
     public long getVersion() { return version; }

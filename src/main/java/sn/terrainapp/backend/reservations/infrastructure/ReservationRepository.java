@@ -41,6 +41,11 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
 
     Optional<Reservation> findByReference(String reference);
 
+    /** [terrainId, nombre] des reservations depuis une date (terrains les plus reserves). */
+    @Query("select r.terrain.id, count(r) from Reservation r where r.statut in :statuts and r.debut >= :depuis "
+            + "group by r.terrain.id")
+    List<Object[]> comptesParTerrain(@Param("depuis") Instant depuis, @Param("statuts") Collection<StatutReservation> statuts);
+
     boolean existsByReference(String reference);
 
     @Query("select r.id from Reservation r where r.statut = sn.terrainapp.backend.reservations.domaine.StatutReservation.EN_ATTENTE_PAIEMENT "
@@ -48,5 +53,9 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
     List<Long> enAttenteDePaiementAvant(@Param("avant") Instant avant, Pageable page);
 
     /** Historique sans compte : dernieres reservations d'un numero. */
-    List<Reservation> findTop20ByClientTelephoneOrderByDebutDesc(String telephone);
+    /** Reservations d'un numero protegees par un code PIN (App), les plus recentes d'abord. */
+    List<Reservation> findTop60ByClientTelephoneAndPinEmpreinteIsNotNullOrderByDebutDesc(String telephone);
+
+    /** Reservations en ligne d'un numero (nouveau PIN apres recuperation par SMS). */
+    List<Reservation> findByClientTelephoneAndCanal(String telephone, sn.terrainapp.backend.reservations.domaine.Canal canal);
 }

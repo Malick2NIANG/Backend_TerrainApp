@@ -97,10 +97,11 @@ public class SecurityConfig {
                                 "/marque", "/sports", "/terrains", "/terrains/*", "/horaires",
                                 "/disponibilites", "/photos/*", "/videos/*", "/annonces",
                                 "/temps-reel/public").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/reservations").permitAll()
-                        // Suivi sans compte : historique par numero (vue reduite) et
-                        // detail avec jeton de suivi ; le service applique ces regles.
-                        .requestMatchers(HttpMethod.GET, "/reservations", "/reservations/*").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/reservations", "/reservations/retrouver",
+                                "/reservations/pin-oublie", "/reservations/pin-oublie/verifier").permitAll()
+                        // Suivi sans compte : detail avec jeton de suivi (ou jeton
+                        // d'acces obtenu par code PIN) ; le service applique ces regles.
+                        .requestMatchers(HttpMethod.GET, "/reservations/*").permitAll()
                         .requestMatchers(HttpMethod.POST, "/paiements/**").permitAll()
                         // Documentation API (Swagger UI + spec OpenAPI generee par springdoc).
                         .requestMatchers(

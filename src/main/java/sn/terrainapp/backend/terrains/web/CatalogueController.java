@@ -43,6 +43,12 @@ public class CatalogueController {
         return CacheHttp.lecture(catalogue.terrains(personnel()));
     }
 
+    @GetMapping("/terrains/tendances")
+    @Operation(summary = "Terrains les plus reserves (30 derniers jours), pour l'accueil de l'App Client")
+    public ResponseEntity<List<TerrainVue>> tendances(@RequestParam(defaultValue = "4") int nombre) {
+        return CacheHttp.lecture(catalogue.tendances(nombre));
+    }
+
     @GetMapping("/terrains/{id}")
     @Operation(summary = "Fiche d'un terrain")
     public ResponseEntity<TerrainVue> terrain(@PathVariable long id) {

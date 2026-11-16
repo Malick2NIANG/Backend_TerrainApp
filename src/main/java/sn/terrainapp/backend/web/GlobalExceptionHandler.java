@@ -126,6 +126,12 @@ public class GlobalExceptionHandler {
                 "Operation impossible : elle entre en conflit avec des donnees existantes."));
     }
 
+    /** Trop d'essais de code PIN pour un numero : 429. */
+    @ExceptionHandler(sn.terrainapp.backend.commun.erreurs.TropDeTentativesException.class)
+    public ResponseEntity<ApiError> handleTropDeTentatives(sn.terrainapp.backend.commun.erreurs.TropDeTentativesException ex) {
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(ApiError.of("TROP_D_ESSAIS", ex.getMessage()));
+    }
+
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     public ResponseEntity<ApiError> handleTropVolumineux(MaxUploadSizeExceededException ex) {
         return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE)

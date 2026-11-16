@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -26,6 +27,7 @@ import sn.terrainapp.backend.reservations.application.ControleTickets.ResultatSc
 import sn.terrainapp.backend.reservations.application.CreationReservation;
 import sn.terrainapp.backend.reservations.application.ReservationVue;
 import sn.terrainapp.backend.reservations.application.SaisieReservation;
+import sn.terrainapp.backend.reservations.application.RecuperationPin;
 import sn.terrainapp.backend.reservations.application.SuiviReservations;
 import sn.terrainapp.backend.reservations.domaine.Canal;
 
@@ -38,8 +40,11 @@ public class ReservationController {
     private final CreationReservation creation;
     private final SuiviReservations suivi;
     private final ControleTickets tickets;
+    private final RecuperationPin recuperation;
 
-    public ReservationController(CreationReservation creation, SuiviReservations suivi, ControleTickets tickets) {
+    public ReservationController(CreationReservation creation, SuiviReservations suivi, ControleTickets tickets,
+                                 RecuperationPin recuperation) {
+        this.recuperation = recuperation;
         this.creation = creation;
         this.suivi = suivi;
         this.tickets = tickets;
@@ -74,10 +79,35 @@ public class ReservationController {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(vue);
     }
 
-    @GetMapping("/reservations")
-    @Operation(summary = "Historique d'un numero (vue reduite, sans ticket) pour un joueur sans compte")
-    public ResponseEntity<List<ReservationVue>> parTelephone(@RequestParam String telephone) {
-        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(suivi.parTelephone(telephone));
+    public record DemandeRecherche(@NotBlank String telephone, @NotBlank String pin) {
+    }
+
+    public record DemandeCode(@NotBlank String telephone) {
+    }
+
+    public record NouveauPin(@NotBlank String telephone, @NotBlank String code, @NotBlank String nouveauPin) {
+    }
+
+    @PostMapping("/reservations/pin-oublie")
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    @Operation(summary = "PIN oublie : envoie un code de recuperation par SMS (meme reponse que le numero ait reserve ou non)")
+    public void pinOublie(@Valid @RequestBody DemandeCode demande) {
+        recuperation.demander(demande.telephone());
+    }
+
+    @PostMapping("/reservations/pin-oublie/verifier")
+    @Operation(summary = "Code de recuperation + nouveau PIN : renvoie les reservations retrouvees")
+    public ResponseEntity<List<SuiviReservations.ReservationRetrouvee>> nouveauPin(@Valid @RequestBody NouveauPin demande) {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore())
+                .body(recuperation.verifier(demande.telephone(), demande.code(), demande.nouveauPin()));
+    }
+
+    /** POST : le code PIN ne doit jamais apparaitre dans une adresse (journaux, historique). */
+    @PostMapping("/reservations/retrouver")
+    @Operation(summary = "Retrouver ses reservations depuis un autre telephone : numero + code PIN (5 essais / 15 min)")
+    public ResponseEntity<List<SuiviReservations.ReservationRetrouvee>> retrouver(@Valid @RequestBody DemandeRecherche demande) {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore())
+                .body(suivi.retrouver(demande.telephone(), demande.pin()));
     }
 
     @GetMapping("/planning")

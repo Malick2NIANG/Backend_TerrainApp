@@ -71,6 +71,26 @@ public class Catalogue {
         return (tous ? terrains.tous() : terrains.visibles()).stream().map(TerrainVue::de).toList();
     }
 
+    /**
+     * Terrains les plus reserves des 30 derniers jours (accueil de l'App
+     * Client), puis dans l'ordre d'affichage du gerant. Les nombres ne sont
+     * pas exposes : seulement le classement.
+     */
+    public List<TerrainVue> tendances(int nombre) {
+        Instant depuis = Instant.now(horloge).minus(java.time.Duration.ofDays(30));
+        Map<Long, Long> comptes = new java.util.HashMap<>();
+        for (Object[] ligne : reservations.comptesParTerrain(depuis,
+                EnumSet.of(StatutReservation.CONFIRMEE, StatutReservation.HONOREE))) {
+            comptes.put((Long) ligne[0], (Long) ligne[1]);
+        }
+        List<Terrain> visibles = terrains.visibles();
+        return visibles.stream()
+                .sorted(java.util.Comparator.comparingLong((Terrain t) -> -comptes.getOrDefault(t.getId(), 0L))
+                        .thenComparingInt(visibles::indexOf))
+                .limit(Math.max(1, Math.min(nombre, 8)))
+                .map(TerrainVue::de).toList();
+    }
+
     public TerrainVue terrain(long id, boolean tous) {
         Terrain t = terrains.findById(id).filter(x -> tous || (x.isActif() && x.getSport().isActif()))
                 .orElseThrow(() -> new RessourceIntrouvableException("Terrain introuvable."));

@@ -21,6 +21,10 @@ INSERT IGNORE INTO `terrains` (`id`, `sport_id`, `nom`, `description`, `localite
   (5, 3, 'Padel 2', 'Court vitré aux dimensions officielles.', 'Liberté 6, Dakar', 'Gazon synthétique', 4,
    'Éclairage,Location de raquettes', 60, 10000, b'1', 2, NOW(6));
 
+-- Positions GPS fictives (Dakar), pour l'itineraire.
+UPDATE `terrains` SET `latitude` = 14.725600, `longitude` = -17.456900 WHERE `id` IN (1, 2, 4, 5) AND `latitude` IS NULL;
+UPDATE `terrains` SET `latitude` = 14.706800, `longitude` = -17.473200 WHERE `id` = 3 AND `latitude` IS NULL;
+
 -- Base de demo creee avant la V2 : localite renseignee si encore vide.
 UPDATE `terrains` SET `localite` = CASE WHEN `id` = 3 THEN 'Mermoz, Dakar' ELSE 'Liberté 6, Dakar' END
   WHERE `id` BETWEEN 1 AND 5 AND `localite` IS NULL;

@@ -35,9 +35,18 @@ public class SuiviReservations {
     private final ApplicationEventPublisher publication;
     private final JournalActions journal;
     private final Clock horloge;
+    private final JetonsAcces jetonsAcces;
+    private final TentativesPin tentatives;
+
+    /** Reservation retrouvee par code PIN, avec son jeton d'acces (90 jours). */
+    public record ReservationRetrouvee(ReservationVue reservation, String jetonAcces) {
+    }
 
     public SuiviReservations(ReservationRepository reservations, EvenementSortantRepository evenements,
-                             ApplicationEventPublisher publication, JournalActions journal, Clock horloge) {
+                             ApplicationEventPublisher publication, JournalActions journal, Clock horloge,
+                             JetonsAcces jetonsAcces, TentativesPin tentatives) {
+        this.jetonsAcces = jetonsAcces;
+        this.tentatives = tentatives;
         this.reservations = reservations;
         this.evenements = evenements;
         this.publication = publication;
@@ -45,21 +54,42 @@ public class SuiviReservations {
         this.horloge = horloge;
     }
 
-    /** Joueur : uniquement avec le jeton de suivi (sinon 404, on ne confirme meme pas l'existence). */
+    /**
+     * Joueur : uniquement avec le jeton de suivi, ou le jeton d'acces obtenu
+     * par code PIN (sinon 404, on ne confirme meme pas l'existence).
+     */
     @Transactional(readOnly = true)
     public ReservationVue pourClient(long id, String jeton) {
-        return reservations.findById(id).filter(r -> JetonSuivi.correspond(jeton, r.getJetonSuiviEmpreinte()))
+        return reservations.findById(id).filter(r -> jetonsAcces.autorise(id, jeton, r.getJetonSuiviEmpreinte()))
                 .map(ReservationVue::pourClient)
                 .orElseThrow(() -> new RessourceIntrouvableException("Réservation introuvable."));
     }
 
-    /** Joueur sans jeton (autre telephone) : ses reservations par numero, en vue reduite. */
+    /**
+     * Joueur sur un autre telephone : numero + code PIN choisi a la
+     * reservation. Seules les reservations protegees par CE code sont
+     * rendues (rien sans le bon code : le numero seul n'expose plus rien).
+     * 5 echecs en 15 min bloquent le numero (TentativesPin).
+     */
     @Transactional(readOnly = true)
-    public List<ReservationVue> parTelephone(String saisie) {
-        String telephone = Telephone.normaliser(saisie).orElseThrow(() -> new RequeteInvalideException(
+    public List<ReservationRetrouvee> retrouver(String saisieTelephone, String pin) {
+        String telephone = Telephone.normaliser(saisieTelephone).orElseThrow(() -> new RequeteInvalideException(
                 "TELEPHONE_REQUIS", "Indiquez un numéro sénégalais à 9 chiffres.", "telephone"));
-        return reservations.findTop20ByClientTelephoneOrderByDebutDesc(telephone).stream()
-                .map(ReservationVue::reduite).toList();
+        if (pin == null || !pin.matches("\\d{4}")) {
+            throw new RequeteInvalideException("PIN_INVALIDE", "Le code PIN fait 4 chiffres.", "pin");
+        }
+        tentatives.verifierAutorise(telephone);
+        List<ReservationRetrouvee> trouvees = reservations
+                .findTop60ByClientTelephoneAndPinEmpreinteIsNotNullOrderByDebutDesc(telephone).stream()
+                .filter(r -> CodesPin.correspond(pin, r.getPinEmpreinte()))
+                .map(r -> new ReservationRetrouvee(ReservationVue.pourClient(r), jetonsAcces.emettre(r.getId())))
+                .toList();
+        if (trouvees.isEmpty()) {
+            tentatives.echec(telephone);
+        } else {
+            tentatives.reussite(telephone);
+        }
+        return trouvees;
     }
 
     /** Personnel : reservations d'un jour (de 00:00 au lendemain 06:00, pour la nuit). */

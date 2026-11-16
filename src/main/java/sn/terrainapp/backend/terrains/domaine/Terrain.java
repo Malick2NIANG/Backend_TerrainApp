@@ -1,5 +1,7 @@
 package sn.terrainapp.backend.terrains.domaine;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -51,6 +53,13 @@ public class Terrain {
     /** Quartier ou site du terrain (recherche de l'App Client). */
     @Column(length = 120)
     private String localite;
+
+    /** Position GPS (itineraire depuis l'App Client) : les deux, ou aucune. */
+    @Column(precision = 9, scale = 6)
+    private BigDecimal latitude;
+
+    @Column(precision = 9, scale = 6)
+    private BigDecimal longitude;
 
     @Column(length = 60)
     private String surface;
@@ -125,6 +134,12 @@ public class Terrain {
         this.ordre = ordre;
     }
 
+    public void placer(Double latitude, Double longitude) {
+        boolean complet = latitude != null && longitude != null;
+        this.latitude = complet ? BigDecimal.valueOf(latitude).setScale(6, RoundingMode.HALF_UP) : null;
+        this.longitude = complet ? BigDecimal.valueOf(longitude).setScale(6, RoundingMode.HALF_UP) : null;
+    }
+
     public void remplacerPlages(List<PlageTarifaire> nouvelles) {
         plages.clear();
         for (PlageTarifaire p : nouvelles) {
@@ -148,6 +163,8 @@ public class Terrain {
     public String getSurface() { return surface; }
     public int getCapacite() { return capacite; }
     public String getLocalite() { return localite; }
+    public Double getLatitude() { return latitude == null ? null : latitude.doubleValue(); }
+    public Double getLongitude() { return longitude == null ? null : longitude.doubleValue(); }
     public List<String> getPhotos() { return photos; }
     /** Photo de couverture (la premiere de la galerie), ou null. */
     public String getPhotoUrl() { return photos.isEmpty() ? null : photos.get(0); }
