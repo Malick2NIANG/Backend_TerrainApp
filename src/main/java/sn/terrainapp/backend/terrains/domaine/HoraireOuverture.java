@@ -3,6 +3,9 @@ package sn.terrainapp.backend.terrains.domaine;
 import java.time.DayOfWeek;
 import java.time.LocalTime;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -18,8 +21,9 @@ import jakarta.persistence.Version;
 @Table(name = "horaires_ouverture")
 public class HoraireOuverture {
 
-    /** 1 = lundi ... 7 = dimanche. */
+    /** 1 = lundi ... 7 = dimanche (TINYINT en base). */
     @Id
+    @JdbcTypeCode(SqlTypes.TINYINT)
     private int jour;
 
     @Column(nullable = false)
