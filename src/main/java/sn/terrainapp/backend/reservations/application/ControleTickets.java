@@ -64,22 +64,22 @@ public class ControleTickets {
         ReservationVue vue = ReservationVue.pourPersonnel(r);
         Instant maintenant = Instant.now(horloge);
         return switch (r.getStatut()) {
-            case HONOREE -> new ResultatScan(Verdict.DEJA_UTILISE, "Ticket deja utilise.", vue);
-            case EN_ATTENTE_PAIEMENT, EXPIREE -> new ResultatScan(Verdict.NON_PAYE, "Reservation non payee.", vue);
-            case ANNULEE -> new ResultatScan(Verdict.ANNULE, "Reservation annulee.", vue);
+            case HONOREE -> new ResultatScan(Verdict.DEJA_UTILISE, "Ticket déjà utilisé.", vue);
+            case EN_ATTENTE_PAIEMENT, EXPIREE -> new ResultatScan(Verdict.NON_PAYE, "Réservation non payée.", vue);
+            case ANNULEE -> new ResultatScan(Verdict.ANNULE, "Réservation annulée.", vue);
             case CONFIRMEE -> {
                 if (maintenant.isBefore(r.getDebut().minus(margeAvant))) {
-                    yield new ResultatScan(Verdict.TROP_TOT, "Trop tot : entree " + margeAvant.toMinutes()
-                            + " min avant le debut.", vue);
+                    yield new ResultatScan(Verdict.TROP_TOT, "Trop tôt : entrée " + margeAvant.toMinutes()
+                            + " min avant le début.", vue);
                 }
                 if (!maintenant.isBefore(r.getFin())) {
-                    yield new ResultatScan(Verdict.EXPIRE, "Creneau termine.", vue);
+                    yield new ResultatScan(Verdict.EXPIRE, "Créneau terminé.", vue);
                 }
                 r.honorer(UtilisateurCourant.identifiant().orElse("systeme"), maintenant);
                 evenements.save(new EvenementSortant(EvenementSortant.Type.STATUT_CHANGE, r.getId(), maintenant));
                 journal.enregistrer(Domaine.RESERVATION, "ENTREE", r.getReference(), "a validé l'entrée de la réservation "
                         + r.getReference());
-                yield new ResultatScan(Verdict.VALIDE, "Entree autorisee.", ReservationVue.pourPersonnel(r));
+                yield new ResultatScan(Verdict.VALIDE, "Entrée autorisée.", ReservationVue.pourPersonnel(r));
             }
         };
     }
