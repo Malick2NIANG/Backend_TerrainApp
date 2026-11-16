@@ -1,0 +1,12 @@
+target/
+*.log
+.mvn/
+.env
+!.env.example
+*.iml
+.idea/
+.vscode/
+.DS_Store
+
+# Tests de charge : rapports k6, journaux et metriques de chaque passage
+load-tests/resultats/

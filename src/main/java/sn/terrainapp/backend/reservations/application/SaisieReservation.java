@@ -1,0 +1,19 @@
+package sn.terrainapp.backend.reservations.application;
+
+import java.time.Instant;
+
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+import sn.terrainapp.backend.paiements.domaine.MoyenPaiement;
+
+/**
+ * Demande de reservation d'un creneau. App Client : moyen en ligne (wave,
+ * orange-money, mixx-yas). Comptoir : especes ou paiement mobile verifie
+ * par l'accueil.
+ */
+public record SaisieReservation(@NotNull Long terrainId, @NotNull Instant debut,
+                                @NotBlank @Size(max = 80) String clientNom,
+                                @NotBlank @Size(max = 30) String clientTelephone,
+                                @NotNull MoyenPaiement moyenPaiement) {
+}
