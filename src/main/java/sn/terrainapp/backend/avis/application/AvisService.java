@@ -22,7 +22,6 @@ import sn.terrainapp.backend.commun.diffusion.ChangementPublic;
 import sn.terrainapp.backend.commun.erreurs.ConflitException;
 import sn.terrainapp.backend.commun.erreurs.RessourceIntrouvableException;
 import sn.terrainapp.backend.reservations.application.JetonsAcces;
-import sn.terrainapp.backend.reservations.domaine.Canal;
 import sn.terrainapp.backend.reservations.domaine.Reservation;
 import sn.terrainapp.backend.reservations.domaine.StatutReservation;
 import sn.terrainapp.backend.reservations.infrastructure.ReservationRepository;
@@ -68,8 +67,8 @@ public class AvisService {
     }
 
     public AvisVue deposer(long reservationId, String jeton, SaisieAvis s) {
+        // En ligne (jeton de suivi) ou au comptoir avec un code PIN (jeton d'acces).
         Reservation r = reservations.findById(reservationId)
-                .filter(x -> x.getCanal() == Canal.APP)
                 .filter(x -> jetonsAcces.autorise(reservationId, jeton, x.getJetonSuiviEmpreinte()))
                 .orElseThrow(() -> new RessourceIntrouvableException("Réservation introuvable."));
         if (!jouee(r, Instant.now(horloge))) {

@@ -56,6 +56,11 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
     /** Reservations d'un numero protegees par un code PIN (App), les plus recentes d'abord. */
     List<Reservation> findTop60ByClientTelephoneAndPinEmpreinteIsNotNullOrderByDebutDesc(String telephone);
 
-    /** Reservations en ligne d'un numero (nouveau PIN apres recuperation par SMS). */
-    List<Reservation> findByClientTelephoneAndCanal(String telephone, sn.terrainapp.backend.reservations.domaine.Canal canal);
+    /**
+     * Reservations d'un numero concernees par le code PIN : en ligne, ou au
+     * comptoir quand le client a choisi un PIN (recuperation par SMS).
+     */
+    @Query("select r from Reservation r where r.clientTelephone = :telephone and "
+            + "(r.canal = sn.terrainapp.backend.reservations.domaine.Canal.APP or r.pinEmpreinte is not null)")
+    List<Reservation> avecCodePin(@Param("telephone") String telephone);
 }

@@ -247,6 +247,23 @@ class ReservationsApiIT extends IntegrationTest {
     }
 
     @Test
+    void comptoirAvecCodePinRetrouvableDansLApp() {
+        long t = creerTerrain(10000, 60);
+        String corps = """
+                {"terrainId":%d,"debut":"%s","clientNom":"Fatou Sarr","clientTelephone":"78 555 66 77","moyenPaiement":"especes","pin":"5173"}
+                """.formatted(t, a(dans(4), 15, 0));
+        Reponse r = executer(java.net.http.HttpRequest.newBuilder(url("/reservations/comptoir"))
+                .header("Content-Type", "application/json").header("Idempotency-Key", UUID.randomUUID().toString())
+                .header("Authorization", "Bearer " + jeton("ACCUEIL"))
+                .POST(java.net.http.HttpRequest.BodyPublishers.ofString(corps)).build());
+        assertThat(r.statut()).as(r.corps()).isEqualTo(201);
+        Reponse trouvees = envoyer("POST", "/reservations/retrouver", "{\"telephone\":\"785556677\",\"pin\":\"5173\"}", null);
+        assertThat(trouvees.json()).hasSize(1);
+        assertThat(trouvees.json().get(0).get("reservation").get("codeTicket").asString()).isNotBlank();
+        assertThat(trouvees.json().get(0).get("reservation").get("payeeLe").isNull()).isFalse();
+    }
+
+    @Test
     void comptoirPlanningAnnulationEtScan() {
         long t = creerTerrain(10000, 60);
         LocalDate jour = dans(1);

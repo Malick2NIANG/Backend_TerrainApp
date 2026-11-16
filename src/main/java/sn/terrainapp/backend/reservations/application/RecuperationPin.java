@@ -13,7 +13,6 @@ import sn.terrainapp.backend.commun.erreurs.TropDeTentativesException;
 import sn.terrainapp.backend.commun.telephone.Telephone;
 import sn.terrainapp.backend.marque.Marque;
 import sn.terrainapp.backend.reservations.application.SuiviReservations.ReservationRetrouvee;
-import sn.terrainapp.backend.reservations.domaine.Canal;
 import sn.terrainapp.backend.reservations.domaine.CodeRecuperation;
 import sn.terrainapp.backend.reservations.domaine.Reservation;
 import sn.terrainapp.backend.reservations.infrastructure.CodeRecuperationRepository;
@@ -24,7 +23,7 @@ import sn.terrainapp.backend.sms.EnvoiSms;
  * PIN oublie : un code de recuperation a 6 chiffres est envoye par SMS au
  * numero de la reservation (10 min, 5 essais, 3 envois par heure). Le bon
  * code permet de choisir un nouveau PIN, applique a toutes les reservations
- * en ligne de ce numero. La reponse a la demande est la meme que le numero
+ * de ce numero (en ligne, et au comptoir quand un PIN avait ete choisi). La reponse a la demande est la meme que le numero
  * ait des reservations ou non (on ne revele pas qui reserve).
  */
 @Service
@@ -59,7 +58,7 @@ public class RecuperationPin {
             throw new TropDeTentativesException("Trop de codes demandés pour ce numéro. Réessayez dans une heure.");
         }
         codes.save(c);
-        if (!reservations.findByClientTelephoneAndCanal(telephone, Canal.APP).isEmpty()) {
+        if (!reservations.avecCodePin(telephone).isEmpty()) {
             sms.envoyer(telephone, marque.nom() + " : votre code de récupération est " + code
                     + " (valable 10 min). Ne le communiquez à personne.");
         }
@@ -82,7 +81,7 @@ public class RecuperationPin {
         }
         codes.delete(c);
         String empreinte = CodesPin.empreinte(nouveauPin);
-        for (Reservation r : reservations.findByClientTelephoneAndCanal(telephone, Canal.APP)) {
+        for (Reservation r : reservations.avecCodePin(telephone)) {
             r.definirPin(empreinte);
         }
         reservations.flush();
