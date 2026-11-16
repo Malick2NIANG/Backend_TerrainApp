@@ -1,5 +1,6 @@
 -- Donnees de demonstration (profil dev uniquement, jamais en prod) :
 -- 3 sports et 5 terrains fictifs, avec heures pleines le soir et le week-end.
+-- Photos et video de demonstration : servies par les fronts (/images/demo, /videos/demo).
 -- Rejouee seulement si ce fichier change ; INSERT IGNORE : ne remplace
 -- jamais ce que le gerant a modifie.
 INSERT IGNORE INTO `sports` (`id`, `nom`, `ordre`, `actif`) VALUES
@@ -7,16 +8,33 @@ INSERT IGNORE INTO `sports` (`id`, `nom`, `ordre`, `actif`) VALUES
   (2, 'Football 7', 2, b'1'),
   (3, 'Padel', 3, b'1');
 
-INSERT IGNORE INTO `terrains` (`id`, `sport_id`, `nom`, `description`, `surface`, `capacite`, `equipements`,
-  `photo_url`, `duree_creneau_minutes`, `tarif_heure`, `actif`, `ordre`, `cree_le`) VALUES
-  (1, 1, 'Terrain A', 'Terrain couvert, idéal pour les matchs du soir.', 'Gazon synthétique', 10,
-   'Éclairage,Vestiaires,Douches', NULL, 60, 15000, b'1', 1, NOW(6)),
-  (2, 1, 'Terrain B', 'Terrain extérieur, au calme.', 'Gazon synthétique', 10,
-   'Éclairage,Vestiaires', NULL, 60, 12000, b'1', 2, NOW(6)),
-  (3, 2, 'Grand terrain', 'Terrain à 7 avec tribune.', 'Gazon synthétique', 14,
-   'Éclairage,Vestiaires,Douches,Tribune', NULL, 90, 25000, b'1', 1, NOW(6)),
-  (4, 3, 'Padel 1', 'Court vitré.', 'Gazon synthétique', 4, 'Éclairage,Location de raquettes', NULL, 60, 10000, b'1', 1, NOW(6)),
-  (5, 3, 'Padel 2', 'Court vitré.', 'Gazon synthétique', 4, 'Éclairage,Location de raquettes', NULL, 60, 10000, b'1', 2, NOW(6));
+INSERT IGNORE INTO `terrains` (`id`, `sport_id`, `nom`, `description`, `localite`, `surface`, `capacite`, `equipements`,
+  `duree_creneau_minutes`, `tarif_heure`, `actif`, `ordre`, `cree_le`) VALUES
+  (1, 1, 'Terrain A', 'Terrain couvert, idéal pour les matchs du soir. Gazon récent, filets neufs et éclairage LED : on y voit comme en plein jour.',
+   'Liberté 6, Dakar', 'Gazon synthétique', 10, 'Éclairage,Vestiaires,Douches,Parking', 60, 15000, b'1', 1, NOW(6)),
+  (2, 1, 'Terrain B', 'Terrain extérieur, au calme, à l''abri du vent. Parfait pour les matchs entre collègues.',
+   'Liberté 6, Dakar', 'Gazon synthétique', 10, 'Éclairage,Vestiaires,Parking', 60, 12000, b'1', 2, NOW(6)),
+  (3, 2, 'Grand terrain', 'Terrain à 7 avec tribune de 80 places : idéal pour les tournois et les matchs de quartier.',
+   'Mermoz, Dakar', 'Gazon synthétique', 14, 'Éclairage,Vestiaires,Douches,Tribune,Buvette', 90, 25000, b'1', 1, NOW(6)),
+  (4, 3, 'Padel 1', 'Court vitré aux dimensions officielles.', 'Liberté 6, Dakar', 'Gazon synthétique', 4,
+   'Éclairage,Location de raquettes', 60, 10000, b'1', 1, NOW(6)),
+  (5, 3, 'Padel 2', 'Court vitré aux dimensions officielles.', 'Liberté 6, Dakar', 'Gazon synthétique', 4,
+   'Éclairage,Location de raquettes', 60, 10000, b'1', 2, NOW(6));
+
+-- Base de demo creee avant la V2 : localite renseignee si encore vide.
+UPDATE `terrains` SET `localite` = CASE WHEN `id` = 3 THEN 'Mermoz, Dakar' ELSE 'Liberté 6, Dakar' END
+  WHERE `id` BETWEEN 1 AND 5 AND `localite` IS NULL;
+
+INSERT IGNORE INTO `terrain_photos` (`terrain_id`, `ordre`, `url`) VALUES
+  (1, 0, '/images/demo/foot-coin.jpg'),
+  (1, 1, '/images/demo/foot-gazon.jpg'),
+  (1, 2, '/images/demo/foot-ballon.jpg'),
+  (2, 0, '/images/demo/foot-gazon.jpg'),
+  (2, 1, '/images/demo/foot-coin.jpg'),
+  (3, 0, '/images/demo/foot-ballon.jpg'),
+  (3, 1, '/images/demo/foot-gazon.jpg'),
+  (3, 2, '/images/demo/foot-coin.jpg'),
+  (3, 3, '/videos/demo/presentation.mp4');
 
 -- Heures pleines : tous les jours de 18:00 a 01:00 ; week-end toute la journee.
 -- Jours : bit 0 = lundi ... bit 6 = dimanche (127 = tous, 96 = samedi + dimanche).

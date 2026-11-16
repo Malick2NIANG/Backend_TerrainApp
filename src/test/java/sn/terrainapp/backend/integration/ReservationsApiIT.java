@@ -281,6 +281,39 @@ class ReservationsApiIT extends IntegrationTest {
     }
 
     @Test
+    void annonceAvecGalerieEtLocalite() {
+        String gerant = jeton("GERANT");
+        long sport = envoyer("POST", "/sports", "{\"nom\":\"" + unique("Sport") + "\",\"ordre\":1}", gerant).json().get("id").asLong();
+        String corps = """
+                {"sportId":%d,"nom":"%s","localite":"Liberté 6, Dakar","capacite":10,"dureeCreneauMinutes":60,
+                 "tarifHeure":10000,"ordre":1,"photos":%s}
+                """;
+        String nom = unique("Terrain");
+        Reponse cree = envoyer("POST", "/terrains", corps.formatted(sport, nom,
+                "[\"/images/demo/foot-coin.jpg\",\"https://exemple.sn/terrain.jpg\",\"/videos/demo/presentation.mp4\"]"), gerant);
+        assertThat(cree.statut()).as(cree.corps()).isEqualTo(201);
+        long id = cree.json().get("id").asLong();
+
+        JsonNode lu = get("/terrains/" + id, null).json();
+        assertThat(lu.get("localite").asString()).isEqualTo("Liberté 6, Dakar");
+        assertThat(lu.get("photos")).hasSize(3);
+        assertThat(lu.get("photoUrl").asString()).isEqualTo("/images/demo/foot-coin.jpg");
+
+        // Nouvel ordre : la couverture change.
+        Reponse modifie = envoyer("PUT", "/terrains/" + id, corps.formatted(sport, nom,
+                "[\"https://exemple.sn/terrain.jpg\",\"/images/demo/foot-coin.jpg\"]"), gerant);
+        assertThat(modifie.statut()).as(modifie.corps()).isEqualTo(200);
+        assertThat(modifie.json().get("photoUrl").asString()).isEqualTo("https://exemple.sn/terrain.jpg");
+        assertThat(modifie.json().get("photos").get(1).asString()).isEqualTo("/images/demo/foot-coin.jpg");
+
+        // Adresse refusee, et 10 photos au plus.
+        assertThat(envoyer("PUT", "/terrains/" + id, corps.formatted(sport, nom, "[\"javascript:alert(1)\"]"), gerant)
+                .statut()).isEqualTo(400);
+        String onze = "[" + String.join(",", java.util.Collections.nCopies(11, "\"/images/demo/foot-coin.jpg\"")) + "]";
+        assertThat(envoyer("PUT", "/terrains/" + id, corps.formatted(sport, nom, onze), gerant).statut()).isEqualTo(400);
+    }
+
+    @Test
     void seulLeGerantConfigureLesTerrains() {
         assertThat(envoyer("POST", "/sports", "{\"nom\":\"X\",\"ordre\":1}", jeton("ACCUEIL")).statut()).isEqualTo(403);
         assertThat(envoyer("POST", "/sports", "{\"nom\":\"X\",\"ordre\":1}", null).statut()).isEqualTo(401);

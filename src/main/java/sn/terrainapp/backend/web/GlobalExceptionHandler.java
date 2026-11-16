@@ -129,7 +129,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     public ResponseEntity<ApiError> handleTropVolumineux(MaxUploadSizeExceededException ex) {
         return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE)
-                .body(ApiError.of("PAYLOAD_TOO_LARGE", "Fichier trop volumineux (2 Mo maximum)."));
+                .body(ApiError.of("PAYLOAD_TOO_LARGE", "Fichier trop volumineux (photo : 2 Mo, vidéo : 30 Mo maximum)."));
     }
 
     /** Corps JSON illisible ou mal forme : 400, pas 500. */

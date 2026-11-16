@@ -95,7 +95,8 @@ public class SecurityConfig {
                         // "actif seulement" est fait par les services.
                         .requestMatchers(HttpMethod.GET,
                                 "/marque", "/sports", "/terrains", "/terrains/*", "/horaires",
-                                "/disponibilites", "/photos/*", "/temps-reel/public").permitAll()
+                                "/disponibilites", "/photos/*", "/videos/*", "/annonces",
+                                "/temps-reel/public").permitAll()
                         .requestMatchers(HttpMethod.POST, "/reservations").permitAll()
                         // Suivi sans compte : historique par numero (vue reduite) et
                         // detail avec jeton de suivi ; le service applique ces regles.

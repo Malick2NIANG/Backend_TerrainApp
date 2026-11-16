@@ -11,10 +11,12 @@ FROM eclipse-temurin:17-jre
 WORKDIR /app
 # Utilisateur dedie, sans privileges : l'image de base tourne en root.
 RUN groupadd --system terrainapp && useradd --system --gid terrainapp --no-create-home terrainapp \
- && mkdir -p /app/donnees/photos && chown -R terrainapp:terrainapp /app/donnees
+ && mkdir -p /app/donnees/photos /app/donnees/videos && chown -R terrainapp:terrainapp /app/donnees
 # Photos deposees par le Gerant (PhotoStorage disque) : monter un volume ici.
 ENV APP_PHOTOS_DOSSIER=/app/donnees/photos
+ENV APP_VIDEOS_DOSSIER=/app/donnees/videos
 VOLUME /app/donnees/photos
+VOLUME /app/donnees/videos
 COPY --from=build --chown=terrainapp:terrainapp /app/target/backend-*.jar app.jar
 USER terrainapp
 EXPOSE 8080

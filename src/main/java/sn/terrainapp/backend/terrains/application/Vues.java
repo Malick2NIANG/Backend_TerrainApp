@@ -30,12 +30,15 @@ public final class Vues {
         }
     }
 
-    public record TerrainVue(long id, long sportId, String sport, String nom, String description, String surface,
-                             int capacite, List<String> equipements, String photoUrl, int dureeCreneauMinutes,
+    /** photoUrl : couverture (premiere photo de la galerie). */
+    public record TerrainVue(long id, long sportId, String sport, String nom, String description, String localite,
+                             String surface, int capacite, List<String> equipements, String photoUrl,
+                             List<String> photos, int dureeCreneauMinutes,
                              long tarifHeure, List<PlageVue> plages, boolean actif, int ordre, long version) {
         public static TerrainVue de(Terrain t) {
             return new TerrainVue(t.getId(), t.getSport().getId(), t.getSport().getNom(), t.getNom(), t.getDescription(),
-                    t.getSurface(), t.getCapacite(), t.listeEquipements(), t.getPhotoUrl(), t.getDureeCreneauMinutes(),
+                    t.getLocalite(), t.getSurface(), t.getCapacite(), t.listeEquipements(), t.getPhotoUrl(),
+                    List.copyOf(t.getPhotos()), t.getDureeCreneauMinutes(),
                     t.getTarifHeure(), t.getPlages().stream().map(PlageVue::de).toList(), t.isActif(), t.getOrdre(),
                     t.getVersion());
         }

@@ -29,7 +29,8 @@ import sn.terrainapp.backend.commun.erreurs.ConflitException;
 import sn.terrainapp.backend.commun.erreurs.RequeteInvalideException;
 import sn.terrainapp.backend.commun.erreurs.RessourceIntrouvableException;
 import sn.terrainapp.backend.commun.securite.UtilisateurCourant;
-import sn.terrainapp.backend.commun.validation.UrlImage;
+import sn.terrainapp.backend.commun.validation.UrlImageValidator;
+import sn.terrainapp.backend.commun.validation.UrlVideo;
 import sn.terrainapp.backend.terrains.application.Vues.BlocageVue;
 import sn.terrainapp.backend.terrains.application.Vues.HoraireVue;
 import sn.terrainapp.backend.terrains.application.Vues.SportVue;
@@ -49,6 +50,8 @@ import sn.terrainapp.backend.terrains.infrastructure.TerrainRepository;
 @Transactional
 public class GestionTerrains {
 
+    public static final int MAX_PHOTOS = 10;
+
     public record SaisieSport(@NotBlank @Size(max = 60) String nom, @Min(0) int ordre, Boolean actif) {
     }
 
@@ -58,10 +61,13 @@ public class GestionTerrains {
                               @NotNull LocalTime debut, @NotNull LocalTime fin, @Min(0) long tarifHeure) {
     }
 
+    /** photos : galerie de l'annonce (photos et videos), le premier media est la couverture. */
     public record SaisieTerrain(@NotNull Long sportId, @NotBlank @Size(max = 80) String nom,
-                                @Size(max = 1000) String description, @Size(max = 60) String surface,
+                                @Size(max = 1000) String description, @Size(max = 120) String localite,
+                                @Size(max = 60) String surface,
                                 @Min(1) @Max(100) int capacite, List<@Size(max = 40) String> equipements,
-                                @UrlImage String photoUrl, @Min(30) @Max(240) int dureeCreneauMinutes,
+                                @Size(max = MAX_PHOTOS, message = "10 photos ou vidéos au maximum.") List<@NotBlank @Size(max = 500) String> photos,
+                                @Min(30) @Max(240) int dureeCreneauMinutes,
                                 @Min(0) long tarifHeure, List<@Valid SaisiePlage> plages, Boolean actif,
                                 @Min(0) int ordre) {
     }
@@ -148,8 +154,14 @@ public class GestionTerrains {
     }
 
     private void appliquer(Terrain t, SaisieTerrain s) {
-        t.modifier(sport(s.sportId()), s.nom(), s.description(), s.surface(), s.capacite(), s.equipements(),
-                s.photoUrl(), s.dureeCreneauMinutes(), s.tarifHeure(), s.actif() == null || s.actif(), s.ordre());
+        for (String media : s.photos() == null ? List.<String>of() : s.photos()) {
+            if (!UrlImageValidator.estValide(media) && !UrlVideo.estValide(media)) {
+                throw new RequeteInvalideException("MEDIA_INVALIDE",
+                        "Galerie : photo (JPEG, PNG, WebP) ou vidéo (MP4, WebM) attendue.", "photos");
+            }
+        }
+        t.modifier(sport(s.sportId()), s.nom(), s.description(), s.localite(), s.surface(), s.capacite(),
+                s.equipements(), s.photos(), s.dureeCreneauMinutes(), s.tarifHeure(), s.actif() == null || s.actif(), s.ordre());
         List<SaisiePlage> plages = s.plages() == null ? List.of() : s.plages();
         for (SaisiePlage p : plages) {
             if (p.debut().equals(p.fin())) {
