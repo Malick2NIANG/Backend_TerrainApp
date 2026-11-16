@@ -48,7 +48,7 @@ public class CreationReservationTransaction {
 
     private static final EnumSet<StatutReservation> OCCUPANTS = EnumSet.of(StatutReservation.EN_ATTENTE_PAIEMENT,
             StatutReservation.CONFIRMEE, StatutReservation.HONOREE);
-    private static final EnumSet<MoyenPaiement> EN_LIGNE = EnumSet.of(MoyenPaiement.WAVE, MoyenPaiement.ORANGE_MONEY,
+    private static final EnumSet<MoyenPaiement> EN_LIGNE = EnumSet.of(MoyenPaiement.WAVE, MoyenPaiement.ORANGE_MONEY, MoyenPaiement.CARTE,
             MoyenPaiement.MIXX_YAS);
 
     /** Reponse de creation : la vue, le jeton de suivi (APP, donne une seule fois) et le paiement. */
@@ -94,7 +94,7 @@ public class CreationReservationTransaction {
         Instant maintenant = Instant.now(horloge);
         if (canal == Canal.APP && !EN_LIGNE.contains(s.moyenPaiement())) {
             throw new RequeteInvalideException("MOYEN_PAIEMENT_INVALIDE",
-                    "Payez avec Wave, Orange Money ou Mixx by Yas.", "moyenPaiement");
+                    "Payez avec Wave, Orange Money, Mixx by Yas ou par carte.", "moyenPaiement");
         }
         String telephone = Telephone.normaliser(s.clientTelephone()).orElseThrow(() -> new RequeteInvalideException(
                 "TELEPHONE_INVALIDE", "Indiquez un numero senegalais a 9 chiffres.", "clientTelephone"));
