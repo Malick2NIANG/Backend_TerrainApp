@@ -19,7 +19,13 @@ public record ReservationVue(long id, String reference, long terrainId, String t
                              String localite, Double latitude, Double longitude,
                              Instant debut, Instant fin, long montant, StatutReservation statut, Canal canal,
                              MoyenPaiement moyenPaiement, String clientNom, String clientTelephone,
-                             String codeTicket, Instant payeeLe, Instant scanneLe, Instant creeLe) {
+                             String codeTicket, Instant payeeLe, Instant scanneLe, Instant creeLe, Integer avisNote) {
+
+    /** Meme vue, avec la note donnee par le joueur (null : pas encore note). */
+    public ReservationVue avecAvis(Integer note) {
+        return new ReservationVue(id, reference, terrainId, terrain, sport, localite, latitude, longitude, debut, fin, montant,
+                statut, canal, moyenPaiement, clientNom, clientTelephone, codeTicket, payeeLe, scanneLe, creeLe, note);
+    }
 
     public static ReservationVue pourClient(Reservation r) {
         boolean ticket = r.getStatut() == StatutReservation.CONFIRMEE || r.getStatut() == StatutReservation.HONOREE;
@@ -36,6 +42,6 @@ public record ReservationVue(long id, String reference, long terrainId, String t
                 t.getLocalite(), t.getLatitude(), t.getLongitude(),
                 r.getDebut(), r.getFin(), r.getMontant(), r.getStatut(), r.getCanal(),
                 r.getMoyenPaiement(), identite ? r.getClientNom() : null, identite ? r.getClientTelephone() : null,
-                code, r.getPayeeLe(), r.getScanneLe(), r.getCreeLe());
+                code, r.getPayeeLe(), r.getScanneLe(), r.getCreeLe(), null);
     }
 }

@@ -50,9 +50,12 @@ public class Catalogue {
     private final ReservationRepository reservations;
     private final Creneaux creneaux;
     private final Clock horloge;
+    private final sn.terrainapp.backend.avis.application.AvisService avis;
 
     public Catalogue(SportRepository sports, TerrainRepository terrains, HoraireOuvertureRepository horaires,
-                     BlocageRepository blocages, ReservationRepository reservations, Creneaux creneaux, Clock horloge) {
+                     BlocageRepository blocages, ReservationRepository reservations, Creneaux creneaux, Clock horloge,
+                     sn.terrainapp.backend.avis.application.AvisService avis) {
+        this.avis = avis;
         this.sports = sports;
         this.terrains = terrains;
         this.horaires = horaires;
@@ -68,7 +71,13 @@ public class Catalogue {
     }
 
     public List<TerrainVue> terrains(boolean tous) {
-        return (tous ? terrains.tous() : terrains.visibles()).stream().map(TerrainVue::de).toList();
+        var stats = avis.stats();
+        return (tous ? terrains.tous() : terrains.visibles()).stream().map(t -> vue(t, stats)).toList();
+    }
+
+    private static TerrainVue vue(Terrain t, Map<Long, sn.terrainapp.backend.avis.application.AvisService.Stats> stats) {
+        var s = stats.get(t.getId());
+        return s == null ? TerrainVue.de(t) : TerrainVue.de(t, s.moyenne(), s.nombre());
     }
 
     /**
@@ -84,17 +93,18 @@ public class Catalogue {
             comptes.put((Long) ligne[0], (Long) ligne[1]);
         }
         List<Terrain> visibles = terrains.visibles();
+        var stats = avis.stats();
         return visibles.stream()
                 .sorted(java.util.Comparator.comparingLong((Terrain t) -> -comptes.getOrDefault(t.getId(), 0L))
                         .thenComparingInt(visibles::indexOf))
                 .limit(Math.max(1, Math.min(nombre, 8)))
-                .map(TerrainVue::de).toList();
+                .map(t -> vue(t, stats)).toList();
     }
 
     public TerrainVue terrain(long id, boolean tous) {
         Terrain t = terrains.findById(id).filter(x -> tous || (x.isActif() && x.getSport().isActif()))
                 .orElseThrow(() -> new RessourceIntrouvableException("Terrain introuvable."));
-        return TerrainVue.de(t);
+        return vue(t, avis.stats());
     }
 
     public List<HoraireVue> horaires() {

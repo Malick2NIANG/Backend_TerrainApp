@@ -12,6 +12,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import sn.terrainapp.backend.avis.infrastructure.AvisRepository;
 import sn.terrainapp.backend.commun.audit.JournalActions;
 import sn.terrainapp.backend.commun.audit.JournalActions.Domaine;
 import sn.terrainapp.backend.commun.diffusion.ChangementPublic;
@@ -37,6 +38,7 @@ public class SuiviReservations {
     private final Clock horloge;
     private final JetonsAcces jetonsAcces;
     private final TentativesPin tentatives;
+    private final AvisRepository avis;
 
     /** Reservation retrouvee par code PIN, avec son jeton d'acces (90 jours). */
     public record ReservationRetrouvee(ReservationVue reservation, String jetonAcces) {
@@ -44,7 +46,8 @@ public class SuiviReservations {
 
     public SuiviReservations(ReservationRepository reservations, EvenementSortantRepository evenements,
                              ApplicationEventPublisher publication, JournalActions journal, Clock horloge,
-                             JetonsAcces jetonsAcces, TentativesPin tentatives) {
+                             JetonsAcces jetonsAcces, TentativesPin tentatives, AvisRepository avis) {
+        this.avis = avis;
         this.jetonsAcces = jetonsAcces;
         this.tentatives = tentatives;
         this.reservations = reservations;
@@ -61,7 +64,7 @@ public class SuiviReservations {
     @Transactional(readOnly = true)
     public ReservationVue pourClient(long id, String jeton) {
         return reservations.findById(id).filter(r -> jetonsAcces.autorise(id, jeton, r.getJetonSuiviEmpreinte()))
-                .map(ReservationVue::pourClient)
+                .map(r -> ReservationVue.pourClient(r).avecAvis(avis.findByReservationId(id).map(a -> a.getNote()).orElse(null)))
                 .orElseThrow(() -> new RessourceIntrouvableException("Réservation introuvable."));
     }
 
@@ -82,7 +85,9 @@ public class SuiviReservations {
         List<ReservationRetrouvee> trouvees = reservations
                 .findTop60ByClientTelephoneAndPinEmpreinteIsNotNullOrderByDebutDesc(telephone).stream()
                 .filter(r -> CodesPin.correspond(pin, r.getPinEmpreinte()))
-                .map(r -> new ReservationRetrouvee(ReservationVue.pourClient(r), jetonsAcces.emettre(r.getId())))
+                .map(r -> new ReservationRetrouvee(ReservationVue.pourClient(r)
+                        .avecAvis(avis.findByReservationId(r.getId()).map(a -> a.getNote()).orElse(null)),
+                        jetonsAcces.emettre(r.getId())))
                 .toList();
         if (trouvees.isEmpty()) {
             tentatives.echec(telephone);
