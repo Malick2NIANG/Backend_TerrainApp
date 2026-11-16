@@ -19,10 +19,13 @@ import sn.terrainapp.backend.tempsreel.EvenementSortantRepository;
 /**
  * Scan du QR a l'entree. Valide d'une marge avant le debut jusqu'a la fin du
  * creneau, une seule fois. La reponse dit toujours pourquoi un ticket est
- * refuse : le controleur l'explique au joueur.
+ * refuse : le controleur l'explique au joueur. Saisie de la reference
+ * (ex. R7K3P9Q) acceptee en secours si le QR est illisible.
  */
 @Service
 public class ControleTickets {
+
+    private static final java.util.regex.Pattern REFERENCE = java.util.regex.Pattern.compile("^R[A-Z2-9]{6}$");
 
     public enum Verdict { VALIDE, DEJA_UTILISE, TROP_TOT, EXPIRE, NON_PAYE, ANNULE, INCONNU }
 
@@ -50,7 +53,11 @@ public class ControleTickets {
         if (code == null || code.isBlank()) {
             return new ResultatScan(Verdict.INCONNU, "QR code illisible.", null);
         }
-        Reservation r = reservations.verrouillerParTicket(code.trim()).orElse(null);
+        // QR du ticket (code aleatoire), ou reference saisie a la main en secours.
+        String saisi = code.trim();
+        Reservation r = REFERENCE.matcher(saisi.toUpperCase()).matches()
+                ? reservations.verrouillerParReference(saisi.toUpperCase()).orElse(null)
+                : reservations.verrouillerParTicket(saisi).orElse(null);
         if (r == null) {
             return new ResultatScan(Verdict.INCONNU, "Ticket inconnu.", null);
         }
