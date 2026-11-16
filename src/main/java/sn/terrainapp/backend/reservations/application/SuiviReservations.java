@@ -50,14 +50,14 @@ public class SuiviReservations {
     public ReservationVue pourClient(long id, String jeton) {
         return reservations.findById(id).filter(r -> JetonSuivi.correspond(jeton, r.getJetonSuiviEmpreinte()))
                 .map(ReservationVue::pourClient)
-                .orElseThrow(() -> new RessourceIntrouvableException("Reservation introuvable."));
+                .orElseThrow(() -> new RessourceIntrouvableException("Réservation introuvable."));
     }
 
     /** Joueur sans jeton (autre telephone) : ses reservations par numero, en vue reduite. */
     @Transactional(readOnly = true)
     public List<ReservationVue> parTelephone(String saisie) {
         String telephone = Telephone.normaliser(saisie).orElseThrow(() -> new RequeteInvalideException(
-                "TELEPHONE_REQUIS", "Indiquez un numero senegalais a 9 chiffres.", "telephone"));
+                "TELEPHONE_REQUIS", "Indiquez un numéro sénégalais à 9 chiffres.", "telephone"));
         return reservations.findTop20ByClientTelephoneOrderByDebutDesc(telephone).stream()
                 .map(ReservationVue::reduite).toList();
     }
@@ -74,14 +74,14 @@ public class SuiviReservations {
     @Transactional(readOnly = true)
     public ReservationVue pourPersonnel(long id) {
         return reservations.findById(id).map(ReservationVue::pourPersonnel)
-                .orElseThrow(() -> new RessourceIntrouvableException("Reservation introuvable."));
+                .orElseThrow(() -> new RessourceIntrouvableException("Réservation introuvable."));
     }
 
     /** Annulation par l'accueil ou le gerant : le creneau est libere aussitot. */
     @Transactional
     public ReservationVue annulerParPersonnel(long id) {
         Reservation r = reservations.verrouiller(id)
-                .orElseThrow(() -> new RessourceIntrouvableException("Reservation introuvable."));
+                .orElseThrow(() -> new RessourceIntrouvableException("Réservation introuvable."));
         Instant maintenant = Instant.now(horloge);
         r.annuler(UtilisateurCourant.identifiant().orElse("systeme"), maintenant);
         evenements.save(new EvenementSortant(EvenementSortant.Type.STATUT_CHANGE, r.getId(), maintenant));

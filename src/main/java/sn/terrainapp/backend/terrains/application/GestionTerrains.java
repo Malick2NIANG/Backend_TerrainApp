@@ -98,7 +98,7 @@ public class GestionTerrains {
 
     public SportVue creerSport(SaisieSport s) {
         if (sports.existsByNomIgnoreCase(s.nom().trim())) {
-            throw new ConflitException("SPORT_EXISTANT", "Ce sport existe deja.");
+            throw new ConflitException("SPORT_EXISTANT", "Ce sport existe déjà.");
         }
         Sport sport = sports.save(new Sport(s.nom(), s.ordre()));
         journal.enregistrer(Domaine.SPORT, "CREATION", String.valueOf(sport.getId()), "a créé le sport " + guillemets(sport.getNom()));
@@ -109,7 +109,7 @@ public class GestionTerrains {
     public SportVue modifierSport(long id, SaisieSport s) {
         Sport sport = sports.findById(id).orElseThrow(() -> new RessourceIntrouvableException("Sport introuvable."));
         if (sports.existsByNomIgnoreCaseAndIdNot(s.nom().trim(), id)) {
-            throw new ConflitException("SPORT_EXISTANT", "Ce sport existe deja.");
+            throw new ConflitException("SPORT_EXISTANT", "Ce sport existe déjà.");
         }
         sport.modifier(s.nom(), s.ordre(), s.actif() == null || s.actif());
         journal.enregistrer(Domaine.SPORT, "MODIFICATION", String.valueOf(id), "a modifié le sport " + guillemets(sport.getNom()));
@@ -120,7 +120,7 @@ public class GestionTerrains {
     public void supprimerSport(long id) {
         Sport sport = sports.findById(id).orElseThrow(() -> new RessourceIntrouvableException("Sport introuvable."));
         if (terrains.existsBySportId(id)) {
-            throw new ConflitException("SPORT_UTILISE", "Des terrains utilisent ce sport : desactivez-le plutot.");
+            throw new ConflitException("SPORT_UTILISE", "Des terrains utilisent ce sport : masquez-le plutôt.");
         }
         sports.delete(sport);
         journal.enregistrer(Domaine.SPORT, "SUPPRESSION", String.valueOf(id), "a supprimé le sport " + guillemets(sport.getNom()));
@@ -154,7 +154,7 @@ public class GestionTerrains {
         for (SaisiePlage p : plages) {
             if (p.debut().equals(p.fin())) {
                 throw new RequeteInvalideException("PLAGE_INVALIDE", "Plage " + guillemets(p.libelle())
-                        + " : le debut et la fin doivent etre differents.", "plages");
+                        + " : le début et la fin doivent être différents.", "plages");
             }
         }
         t.remplacerPlages(plages.stream().map(p -> new PlageTarifaire(p.libelle(), jours(p.jours()), p.debut(), p.fin(),
@@ -175,7 +175,7 @@ public class GestionTerrains {
         for (SaisieHoraire s : saisies) {
             HoraireOuverture h = horaires.findById(s.jour()).orElseThrow();
             if (s.ouvert() && s.ouverture().equals(s.fermeture())) {
-                throw new RequeteInvalideException("HORAIRE_INVALIDE", "L'ouverture et la fermeture doivent etre differentes.", "horaires");
+                throw new RequeteInvalideException("HORAIRE_INVALIDE", "L'ouverture et la fermeture doivent être différentes.", "horaires");
             }
             h.modifier(s.ouvert(), s.ouverture(), s.fermeture());
         }
@@ -193,7 +193,7 @@ public class GestionTerrains {
 
     public BlocageVue bloquer(SaisieBlocage s) {
         if (!s.fin().isAfter(s.debut())) {
-            throw new RequeteInvalideException("PERIODE_INVALIDE", "La fin doit etre apres le debut.", "fin");
+            throw new RequeteInvalideException("PERIODE_INVALIDE", "La fin doit être après le début.", "fin");
         }
         String nomTerrain = "tout le complexe";
         if (s.terrainId() != null) {

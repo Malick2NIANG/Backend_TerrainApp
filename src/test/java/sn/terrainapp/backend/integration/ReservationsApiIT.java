@@ -262,6 +262,15 @@ class ReservationsApiIT extends IntegrationTest {
     }
 
     @Test
+    void scanParReferenceEnSecours() {
+        long t = creerTerrain(10000, 60);
+        Reponse r = reserver(t, a(dans(1), 18, 0));
+        String reference = r.json().get("reservation").get("reference").asString();
+        Reponse scan = envoyer("POST", "/tickets/scan", "{\"code\":\"" + reference.toLowerCase() + "\"}", jeton("ACCUEIL"));
+        assertThat(scan.json().get("verdict").asString()).isEqualTo("VALIDE");
+    }
+
+    @Test
     void ticketTropTot() {
         long t = creerTerrain(10000, 60);
         Reponse r = reserver(t, a(dans(5), 10, 0));

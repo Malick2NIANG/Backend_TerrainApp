@@ -35,6 +35,10 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
     @Query("select r from Reservation r where r.codeTicket = :code")
     Optional<Reservation> verrouillerParTicket(@Param("code") String code);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select r from Reservation r where r.reference = :reference")
+    Optional<Reservation> verrouillerParReference(@Param("reference") String reference);
+
     Optional<Reservation> findByReference(String reference);
 
     boolean existsByReference(String reference);

@@ -125,7 +125,7 @@ public class Reservation {
 
     public void confirmerPaiement() {
         if (statut != StatutReservation.EN_ATTENTE_PAIEMENT) {
-            throw new ReservationInterditeException("STATUT_INCOMPATIBLE", "Cette reservation n'attend pas de paiement.");
+            throw new ReservationInterditeException("STATUT_INCOMPATIBLE", "Cette réservation n'attend pas de paiement.");
         }
         statut = StatutReservation.CONFIRMEE;
     }
@@ -139,7 +139,7 @@ public class Reservation {
 
     public void annuler(String par, Instant quand) {
         if (statut != StatutReservation.CONFIRMEE && statut != StatutReservation.EN_ATTENTE_PAIEMENT) {
-            throw new ReservationInterditeException("STATUT_INCOMPATIBLE", "Cette reservation ne peut plus etre annulee.");
+            throw new ReservationInterditeException("STATUT_INCOMPATIBLE", "Cette réservation ne peut plus être annulée.");
         }
         statut = StatutReservation.ANNULEE;
         annuleeLe = quand;
@@ -148,7 +148,7 @@ public class Reservation {
 
     public void honorer(String par, Instant quand) {
         if (statut != StatutReservation.CONFIRMEE) {
-            throw new ReservationInterditeException("STATUT_INCOMPATIBLE", "Ticket non valide pour l'entree.");
+            throw new ReservationInterditeException("STATUT_INCOMPATIBLE", "Ticket non valide pour l'entrée.");
         }
         statut = StatutReservation.HONOREE;
         scanneLe = quand;

@@ -87,10 +87,10 @@ public class SuiviPaiements {
         Reservation r = reservations.verrouiller(reservationId)
                 .filter(x -> x.getCanal() == Canal.APP)
                 .filter(x -> JetonSuivi.correspond(jeton, x.getJetonSuiviEmpreinte()))
-                .orElseThrow(() -> new RessourceIntrouvableException("Reservation introuvable."));
+                .orElseThrow(() -> new RessourceIntrouvableException("Réservation introuvable."));
         if (r.getStatut() != StatutReservation.EN_ATTENTE_PAIEMENT) {
             throw new ConflitException("PAIEMENT_IMPOSSIBLE", r.getStatut() == StatutReservation.CONFIRMEE
-                    ? "Cette reservation est deja payee." : "Cette reservation n'est plus valable : reservez a nouveau.");
+                    ? "Cette réservation est déjà payée." : "Cette réservation n'est plus valable : réservez à nouveau.");
         }
         IssuePaiement issue = paiementService.payerEnLigne(r);
         apresChangement(r, Instant.now(horloge));
