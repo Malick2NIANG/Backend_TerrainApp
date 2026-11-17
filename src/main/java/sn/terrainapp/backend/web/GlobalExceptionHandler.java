@@ -145,6 +145,16 @@ public class GlobalExceptionHandler {
                 .body(ApiError.of("INVALID_BODY", "Corps de requete illisible ou mal forme"));
     }
 
+    /**
+     * Parametres de requete mal formes (ex. "?=", nom vide) que Tomcat refuse
+     * en les lisant : 400, pas 500 (releve par le scan DAST).
+     */
+    @ExceptionHandler(org.apache.tomcat.util.http.InvalidParameterException.class)
+    public ResponseEntity<ApiError> handleParametresInvalides(org.apache.tomcat.util.http.InvalidParameterException ex) {
+        return ResponseEntity.badRequest()
+                .body(ApiError.of("INVALID_PARAMETERS", "Parametres de requete mal formes"));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiError> handleGeneric(Exception ex) {
         // Trace complete cote serveur (sinon une vraie panne est indiagnosticable) ;
