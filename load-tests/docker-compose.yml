@@ -1,0 +1,57 @@
+# Pile de charge JETABLE : MySQL en memoire (tmpfs, videe a chaque arret) et
+# backend construit depuis ce depot, sur le port 8091. Elle ne touche jamais
+# la base de developpement (projet compose et volumes separes).
+#
+# Profil dev : terrains et annonces de demonstration (db/demo). Paiement et
+# SMS simules. Limites de debit relevees : k6 envoie tout depuis une seule IP
+# (le scenario de limitation se teste sur la pile normale).
+#
+# Les secrets sont fournis par lancer.ps1 / lancer.sh (valeurs aleatoires a
+# chaque demarrage) ; rien n'est ecrit ici.
+name: terrainapp-charge
+
+services:
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_DATABASE: terrainapp
+      MYSQL_USER: terrainapp
+      MYSQL_PASSWORD: ${CHARGE_MYSQL_PASSWORD:?Lancez via lancer.ps1 ou lancer.sh}
+      MYSQL_ROOT_PASSWORD: ${CHARGE_MYSQL_ROOT_PASSWORD:?Lancez via lancer.ps1 ou lancer.sh}
+    tmpfs:
+      - /var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p$$MYSQL_ROOT_PASSWORD"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  backend:
+    build:
+      context: ..
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/terrainapp
+      SPRING_DATASOURCE_USERNAME: terrainapp
+      SPRING_DATASOURCE_PASSWORD: ${CHARGE_MYSQL_PASSWORD}
+      APP_JWT_SECRET: ${CHARGE_JWT_SECRET:?Lancez via lancer.ps1 ou lancer.sh}
+      APP_AUTH_SEED_ENABLED: "true"
+      APP_AUTH_SEED_GERANT_PASSWORD: ${K6_MDP_GERANT:?Lancez via lancer.ps1 ou lancer.sh}
+      APP_PAIEMENT_PRESTATAIRE: simule
+      APP_PAIEMENT_SIMULE_MODE: immediat
+      APP_SMS_PRESTATAIRE: simule
+      APP_LIMITE_RESERVATIONS: "1000000"
+      APP_LIMITE_SUIVI: "1000000"
+      APP_LIMITE_CONNEXIONS: "1000"
+      JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=75"
+    ports:
+      - "8091:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/api/v1/health >/dev/null 2>&1 || curl -fs http://localhost:8080/api/v1/health >/dev/null"]
+      interval: 5s
+      timeout: 5s
+      retries: 40
+      start_period: 20s
