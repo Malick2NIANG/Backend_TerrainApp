@@ -10,10 +10,12 @@ import sn.terrainapp.backend.paiements.domaine.MoyenPaiement;
 /**
  * Demande de reservation d'un creneau. App Client : moyen en ligne (wave,
  * orange-money, mixx-yas). Comptoir : especes ou paiement mobile verifie
- * par l'accueil.
+ * par l'accueil. especesRecues : au comptoir en especes, somme donnee par le
+ * client (la monnaie a rendre en est deduite), facultative.
  */
 public record SaisieReservation(@NotNull Long terrainId, @NotNull Instant debut,
                                 @NotBlank @Size(max = 80) String clientNom,
                                 @NotBlank @Size(max = 30) String clientTelephone,
-                                @NotNull MoyenPaiement moyenPaiement) {
+                                @NotNull MoyenPaiement moyenPaiement,
+                                @jakarta.validation.constraints.Min(0) Long especesRecues) {
 }

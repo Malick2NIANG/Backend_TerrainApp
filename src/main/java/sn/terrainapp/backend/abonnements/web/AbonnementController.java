@@ -69,12 +69,12 @@ public class AbonnementController {
         return gestion.resilier(id);
     }
 
-    public record DemandeEncaissement(@NotNull MoyenPaiement moyenPaiement) {
+    public record DemandeEncaissement(@NotNull MoyenPaiement moyenPaiement, Long especesRecues) {
     }
 
     @PostMapping("/reservations/{id}/encaissement")
     @Operation(summary = "Encaisser au comptoir une seance d'abonnement payable le jour J")
     public ReservationVue encaisser(@PathVariable long id, @Valid @RequestBody DemandeEncaissement d) {
-        return gestion.encaisser(id, d.moyenPaiement());
+        return gestion.encaisser(id, d.moyenPaiement(), d.especesRecues());
     }
 }

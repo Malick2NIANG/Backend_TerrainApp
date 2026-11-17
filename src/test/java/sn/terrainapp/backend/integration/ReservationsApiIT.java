@@ -266,6 +266,8 @@ class ReservationsApiIT extends IntegrationTest {
         assertThat(res.get("statut").asString()).isEqualTo("CONFIRMEE");
         assertThat(res.get("canal").asString()).isEqualTo("COMPTOIR");
         assertThat(comptoir.json().has("jetonSuivi")).isFalse();
+        // Le recu remis au joueur porte le code du ticket.
+        assertThat(res.get("codeTicket").asString()).isNotBlank();
 
         // Planning du jour : la reservation y est, sans code de ticket.
         Reponse planning = get("/planning?date=" + jour, jeton("ACCUEIL"));
@@ -309,6 +311,28 @@ class ReservationsApiIT extends IntegrationTest {
         Reponse ok = envoyer("POST", "/reservations/" + id + "/annulation", motif, jeton("GERANT"));
         assertThat(ok.statut()).as(ok.corps()).isEqualTo(200);
         assertThat(SmsDeTest.DERNIERS.get("+221771234567")).contains("rembours");
+    }
+
+    @Test
+    void especesAuComptoirMonnaieRendue() {
+        long t = creerTerrain(10000, 60);
+        String sans = """
+                {"terrainId":%d,"debut":"%s","clientNom":"Moussa Fall","clientTelephone":"70 111 22 33","moyenPaiement":"especes","especesRecues":%d}
+                """;
+        Reponse peu = envoyer("POST", "/reservations/comptoir", sans.formatted(t, a(dans(3), 10, 0), 5000), null);
+        assertThat(peu.statut()).isEqualTo(401);
+        Reponse insuffisant = executer(java.net.http.HttpRequest.newBuilder(url("/reservations/comptoir"))
+                .header("Content-Type", "application/json").header("Authorization", "Bearer " + jeton("ACCUEIL"))
+                .header("Idempotency-Key", UUID.randomUUID().toString())
+                .POST(java.net.http.HttpRequest.BodyPublishers.ofString(sans.formatted(t, a(dans(3), 10, 0), 5000))).build());
+        assertThat(insuffisant.json().get("code").asString()).isEqualTo("ESPECES_INSUFFISANTES");
+        Reponse ok = executer(java.net.http.HttpRequest.newBuilder(url("/reservations/comptoir"))
+                .header("Content-Type", "application/json").header("Authorization", "Bearer " + jeton("ACCUEIL"))
+                .header("Idempotency-Key", UUID.randomUUID().toString())
+                .POST(java.net.http.HttpRequest.BodyPublishers.ofString(sans.formatted(t, a(dans(3), 10, 0), 15000))).build());
+        assertThat(ok.statut()).as(ok.corps()).isEqualTo(201);
+        assertThat(ok.json().get("reservation").get("especesRecues").asLong()).isEqualTo(15000);
+        assertThat(ok.json().get("reservation").get("monnaieRendue").asLong()).isEqualTo(5000);
     }
 
     @Test

@@ -230,17 +230,18 @@ public class GestionAbonnements {
 
     /** Encaissement au comptoir d'une seance payable le jour J. */
     @Transactional
-    public ReservationVue encaisser(long reservationId, MoyenPaiement moyen) {
+    public ReservationVue encaisser(long reservationId, MoyenPaiement moyen, Long especesRecues) {
         if (moyen == null) {
             throw new RequeteInvalideException("MOYEN_PAIEMENT_REQUIS", "Indiquez comment le client a payé.", "moyenPaiement");
         }
         Reservation r = reservations.verrouiller(reservationId)
                 .orElseThrow(() -> new RessourceIntrouvableException("Réservation introuvable."));
         r.encaisser(moyen, Instant.now(horloge));
+        r.noterEspeces(especesRecues);
         paiements.encaisserAuComptoir(r);
         journal.enregistrer(Domaine.RESERVATION, "ENCAISSEMENT", r.getReference(), "a encaissé la séance "
                 + r.getReference() + " (" + fcfa(r.getMontant()) + ", " + moyen.code() + ")");
-        return ReservationVue.pourPersonnel(r);
+        return ReservationVue.pourClient(r);
     }
 
     private List<AbonnementVue> vues(List<Abonnement> liste) {

@@ -126,6 +126,10 @@ public class CreationReservationTransaction {
                 jeton == null ? null : JetonSuivi.empreinte(jeton), JetonSuivi.codeTicket(),
                 UtilisateurCourant.identifiant().orElse(null)));
 
+        if (canal == Canal.COMPTOIR) {
+            r.noterEspeces(s.especesRecues());
+        }
+
         Paiement paiement = null;
         if (canal == Canal.APP) {
             IssuePaiement issue = paiements.payerEnLigne(r);
@@ -142,7 +146,8 @@ public class CreationReservationTransaction {
                 ? EvenementSortant.Type.RESERVATION_CONFIRMEE : EvenementSortant.Type.STATUT_CHANGE, r.getId(), maintenant));
         publication.publishEvent(new ChangementPublic(ChangementPublic.Sujet.DISPONIBILITES));
 
-        ReservationVue vue = canal == Canal.APP ? ReservationVue.pourClient(r) : ReservationVue.pourPersonnel(r);
+        // Au comptoir aussi, la vue client : le code du ticket est imprime sur le recu remis au joueur.
+        ReservationVue vue = ReservationVue.pourClient(r);
         String reponse = json.writeValueAsString(new ReservationCreee(vue, jeton, paiement));
         if (cleIdempotence != null) {
             idempotence.memoriser(cleIdempotence, r.getId(), reponse);

@@ -75,6 +75,13 @@ public class Reservation {
     @jakarta.persistence.Transient
     private boolean aEncaisser;
 
+    /** Especes : somme donnee par le client et monnaie rendue (recu de caisse). */
+    @Column(name = "especes_recues")
+    private Long especesRecues;
+
+    @Column(name = "monnaie_rendue")
+    private Long monnaieRendue;
+
     /** Date du paiement (recu) : confirmation en ligne, ou creation au comptoir. */
     @Column(name = "payee_le")
     private Instant payeeLe;
@@ -141,6 +148,18 @@ public class Reservation {
     public void rattacherAbonnement(long abonnement, boolean encaisserLeJourJ) {
         this.abonnementId = abonnement;
         this.aEncaisser = encaisserLeJourJ;
+    }
+
+    /** Especes recues pour ce montant : la monnaie rendue est calculee. */
+    public void noterEspeces(Long recues) {
+        if (recues == null || moyenPaiement != MoyenPaiement.ESPECES) {
+            return;
+        }
+        if (recues < montant) {
+            throw new ReservationInterditeException("ESPECES_INSUFFISANTES", "La somme reçue est inférieure au montant à encaisser.");
+        }
+        this.especesRecues = recues;
+        this.monnaieRendue = recues - montant;
     }
 
     /** Encaissement au comptoir d'une seance confirmee non payee. */
@@ -219,6 +238,8 @@ public class Reservation {
     public Instant getPayeeLe() { return payeeLe; }
     public Long getAbonnementId() { return abonnementId; }
     public String getMotifAnnulation() { return motifAnnulation; }
+    public Long getEspecesRecues() { return especesRecues; }
+    public Long getMonnaieRendue() { return monnaieRendue; }
     public Instant getScanneLe() { return scanneLe; }
     public Instant getCreeLe() { return creeLe; }
     public long getVersion() { return version; }
