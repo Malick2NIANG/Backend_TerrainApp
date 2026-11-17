@@ -42,7 +42,7 @@ export function setup() {
 export function joueur({ terrains }) {
   const debutParcours = Date.now();
   const terrainId = terrains[entierEntre(0, terrains.length - 1)];
-  const creneau = creneauLibre(lireDispos(jourDans(entierEntre(1, 60)), terrainId));
+  const creneau = creneauLibre(lireDispos(jourDans(entierEntre(1, 49)), terrainId));
   sleep(1 + Math.random() * 2); // le joueur choisit son creneau
   if (!creneau) return;
   const r = reserver(terrainId, creneau.debut);

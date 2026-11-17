@@ -20,13 +20,13 @@ export function setup() {
   annoncerCible('doublons');
   const creneaux = [];
   for (const terrainId of terrainsReservables()) {
-    for (let j = 91; j < 105 && creneaux.length < 2; j += 1) {
+    for (let j = 50; j < 55 && creneaux.length < 2; j += 1) {
       const libres = lireDispos(jourDans(j), terrainId).filter((c) => c.etat === 'LIBRE');
       for (const c of libres.slice(0, 2 - creneaux.length)) creneaux.push({ terrainId, debut: c.debut });
     }
     if (creneaux.length === 2) return { creneaux };
   }
-  throw new Error('Pas assez de creneaux libres entre J+91 et J+105.');
+  throw new Error('Pas assez de creneaux libres entre J+50 et J+54 (periode reservable : 60 jours).');
 }
 
 export default function ({ creneaux: [a, b] }) {
