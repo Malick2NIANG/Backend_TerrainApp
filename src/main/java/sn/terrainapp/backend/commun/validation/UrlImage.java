@@ -16,7 +16,7 @@ import jakarta.validation.Payload;
  */
 @Documented
 @Constraint(validatedBy = UrlImageValidator.class)
-@Target({ElementType.FIELD, ElementType.RECORD_COMPONENT, ElementType.PARAMETER})
+@Target({ElementType.FIELD, ElementType.RECORD_COMPONENT, ElementType.PARAMETER, ElementType.TYPE_USE})
 @Retention(RetentionPolicy.RUNTIME)
 public @interface UrlImage {
 

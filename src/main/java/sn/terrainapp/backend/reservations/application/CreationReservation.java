@@ -34,7 +34,7 @@ public class CreationReservation {
     public Resultat creer(SaisieReservation saisie, Canal canal, String cleIdempotence) {
         if (cleIdempotence == null || cleIdempotence.isBlank()) {
             throw new RequeteInvalideException("IDEMPOTENCE_CLE_REQUISE",
-                    "En-tete Idempotency-Key obligatoire.", "Idempotency-Key");
+                    "En-tête Idempotency-Key obligatoire.", "Idempotency-Key");
         }
         String cle = cleIdempotence.trim();
         String empreinte = Idempotence.empreinte(json.writeValueAsString(saisie) + "|" + canal + "|"

@@ -69,8 +69,9 @@ public class LimitationDebitFilter extends OncePerRequestFilter {
             regle = "connexion";
             limite = connexionsParMinute;
         } else if (chemin.startsWith("/reservations") && requete.getHeader("Authorization") == null
-                && ("GET".equals(methode) || ("POST".equals(methode) && chemin.endsWith("/avis")))) {
-            // Suivi client sans compte, et avis sur la livraison (memes jetons a deviner).
+                && ("GET".equals(methode) || ("POST".equals(methode)
+                    && (chemin.endsWith("/avis") || chemin.startsWith("/reservations/retrouver"))))) {
+            // Suivi client sans compte et recherche par code SMS (jetons et codes a deviner).
             regle = "suivi";
             limite = suiviParMinute;
         }

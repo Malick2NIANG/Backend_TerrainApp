@@ -51,7 +51,7 @@ public class TempsReelController {
     }
 
     @GetMapping(path = "/temps-reel/planning", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    @PreAuthorize("hasAnyRole('GERANT', 'ACCUEIL', 'CONTROLEUR')")
+    @PreAuthorize("hasAnyRole('GERANT', 'ACCUEIL', 'CONTROLEUR', 'ADMIN')")
     @Operation(summary = "Flux SSE du planning (evenement 'reservation')")
     @Transactional(readOnly = true)
     public SseEmitter abonner(@RequestHeader(name = "Last-Event-ID", required = false) String dernierEvenement) {

@@ -95,11 +95,13 @@ public class SecurityConfig {
                         // "actif seulement" est fait par les services.
                         .requestMatchers(HttpMethod.GET,
                                 "/marque", "/sports", "/terrains", "/terrains/*", "/horaires",
-                                "/disponibilites", "/photos/*", "/temps-reel/public").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/reservations").permitAll()
-                        // Suivi sans compte : historique par numero (vue reduite) et
-                        // detail avec jeton de suivi ; le service applique ces regles.
-                        .requestMatchers(HttpMethod.GET, "/reservations", "/reservations/*").permitAll()
+                                "/disponibilites", "/photos/*", "/videos/*", "/annonces", "/terrains/*/avis",
+                                "/temps-reel/public").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/reservations", "/reservations/retrouver",
+                                "/reservations/retrouver/code", "/reservations/*/avis").permitAll()
+                        // Suivi sans compte : detail avec jeton de suivi (ou jeton
+                        // d'acces obtenu par code SMS) ; le service applique ces regles.
+                        .requestMatchers(HttpMethod.GET, "/reservations/*").permitAll()
                         .requestMatchers(HttpMethod.POST, "/paiements/**").permitAll()
                         // Documentation API (Swagger UI + spec OpenAPI generee par springdoc).
                         .requestMatchers(

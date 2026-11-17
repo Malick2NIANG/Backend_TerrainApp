@@ -57,6 +57,9 @@ public class VerificationConfigurationProd {
         if (emplacementsFlyway != null && emplacementsFlyway.contains("db/demo")) {
             problemes.add("spring.flyway.locations ne doit pas inclure db/demo (donnees de demonstration)");
         }
+        if ("simule".equalsIgnoreCase(environnement.getProperty("app.sms.prestataire", "simule"))) {
+            problemes.add("APP_SMS_PRESTATAIRE=simule interdit en production (les codes de recuperation ne partiraient pas)");
+        }
         if ("simule".equalsIgnoreCase(prestatairePaiement)) {
             problemes.add("APP_PAIEMENT_PRESTATAIRE=simule interdit en production (PAIEMENT SIMULE : reservations confirmees sans argent reel)");
         }

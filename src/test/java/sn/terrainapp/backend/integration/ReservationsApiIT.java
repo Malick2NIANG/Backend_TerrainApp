@@ -126,18 +126,35 @@ class ReservationsApiIT extends IntegrationTest {
         Reponse dispo = get("/disponibilites?date=" + dans(1) + "&terrainId=" + t, null);
         assertThat(creneau(dispo, debut).get("etat").asString()).isEqualTo("RESERVE");
 
-        // Historique par numero : vue reduite, ni nom ni ticket.
-        Reponse histo = get("/reservations?telephone=771234567", null);
-        assertThat(histo.statut()).isEqualTo(200);
-        JsonNode ligne = null;
-        for (JsonNode n : histo.json()) {
-            if (n.get("id").asLong() == id) {
-                ligne = n;
+        // Le numero seul ne donne plus rien : il faut le code recu par SMS.
+        assertThat(get("/reservations?telephone=771234567", null).statut()).isIn(401, 403, 404, 405);
+        assertThat(envoyer("POST", "/reservations/retrouver", "{\"telephone\":\"771234567\",\"code\":\"123456\"}", null)
+                .json().get("code").asString()).isEqualTo("CODE_EXPIRE");
+        Reponse trouvees = retrouverParSms(TEL, "+221771234567");
+        assertThat(trouvees.statut()).as(trouvees.corps()).isEqualTo(200);
+        JsonNode trouvee = null;
+        for (JsonNode n : trouvees.json()) {
+            if (n.get("reservation").get("id").asLong() == id) {
+                trouvee = n;
             }
         }
-        assertThat(ligne).isNotNull();
-        assertThat(ligne.has("codeTicket")).isFalse();
-        assertThat(ligne.has("clientNom")).isFalse();
+        assertThat(trouvee).isNotNull();
+        assertThat(trouvee.get("reservation").get("payeeLe").isNull()).isFalse();
+        // Le jeton d'acces ouvre le detail et le ticket, comme le jeton de suivi.
+        Reponse viaSms = avecJeton("/reservations/" + id, trouvee.get("jetonAcces").asString());
+        assertThat(viaSms.statut()).isEqualTo(200);
+        assertThat(viaSms.json().get("codeTicket").asString()).isEqualTo(detail.json().get("codeTicket").asString());
+        assertThat(avecJeton("/reservations/" + (id + 1), trouvee.get("jetonAcces").asString()).statut()).isEqualTo(404);
+    }
+
+    private Reponse retrouverParSms(String telephone, String international) {
+        assertThat(envoyer("POST", "/reservations/retrouver/code", "{\"telephone\":\"" + telephone + "\"}", null).statut())
+                .isEqualTo(202);
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile("(\\d{6})")
+                .matcher(SmsDeTest.DERNIERS.getOrDefault(international, ""));
+        assertThat(m.find()).as("SMS recu").isTrue();
+        return envoyer("POST", "/reservations/retrouver",
+                "{\"telephone\":\"" + telephone + "\",\"code\":\"" + m.group(1) + "\"}", null);
     }
 
     @Test
@@ -214,6 +231,23 @@ class ReservationsApiIT extends IntegrationTest {
     }
 
     @Test
+    void comptoirRetrouvableDansLAppParSms() {
+        long t = creerTerrain(10000, 60);
+        String corps = """
+                {"terrainId":%d,"debut":"%s","clientNom":"Fatou Sarr","clientTelephone":"78 555 66 77","moyenPaiement":"especes"}
+                """.formatted(t, a(dans(4), 15, 0));
+        Reponse r = executer(java.net.http.HttpRequest.newBuilder(url("/reservations/comptoir"))
+                .header("Content-Type", "application/json").header("Idempotency-Key", UUID.randomUUID().toString())
+                .header("Authorization", "Bearer " + jeton("ACCUEIL"))
+                .POST(java.net.http.HttpRequest.BodyPublishers.ofString(corps)).build());
+        assertThat(r.statut()).as(r.corps()).isEqualTo(201);
+        Reponse trouvees = retrouverParSms("785556677", "+221785556677");
+        assertThat(trouvees.json()).hasSize(1);
+        assertThat(trouvees.json().get(0).get("reservation").get("codeTicket").asString()).isNotBlank();
+        assertThat(trouvees.json().get(0).get("reservation").get("payeeLe").isNull()).isFalse();
+    }
+
+    @Test
     void comptoirPlanningAnnulationEtScan() {
         long t = creerTerrain(10000, 60);
         LocalDate jour = dans(1);
@@ -232,6 +266,8 @@ class ReservationsApiIT extends IntegrationTest {
         assertThat(res.get("statut").asString()).isEqualTo("CONFIRMEE");
         assertThat(res.get("canal").asString()).isEqualTo("COMPTOIR");
         assertThat(comptoir.json().has("jetonSuivi")).isFalse();
+        // Le recu remis au joueur porte le code du ticket.
+        assertThat(res.get("codeTicket").asString()).isNotBlank();
 
         // Planning du jour : la reservation y est, sans code de ticket.
         Reponse planning = get("/planning?date=" + jour, jeton("ACCUEIL"));
@@ -256,9 +292,62 @@ class ReservationsApiIT extends IntegrationTest {
         // Annulation par l'accueil : creneau libere.
         long id = res.get("id").asLong();
         assertThat(envoyer("POST", "/reservations/" + id + "/annulation", null, controleur).statut()).isEqualTo(403);
-        Reponse annul = envoyer("POST", "/reservations/" + id + "/annulation", null, jeton("ACCUEIL"));
+        assertThat(envoyer("POST", "/reservations/" + id + "/annulation", null, jeton("ACCUEIL"))
+                .json().get("code").asString()).isEqualTo("MOTIF_REQUIS");
+        Reponse annul = envoyer("POST", "/reservations/" + id + "/annulation", "{\"motif\":\"Le client a demandé\"}", jeton("ACCUEIL"));
         assertThat(annul.json().get("statut").asString()).isEqualTo("ANNULEE");
+        assertThat(annul.json().get("motifAnnulation").asString()).isEqualTo("Le client a demandé");
+        assertThat(SmsDeTest.DERNIERS.get("+221771234567")).contains("annulée");
         assertThat(reserver(t, debut).statut()).isEqualTo(201);
+    }
+
+    @Test
+    void annulationDUneReservationPayeeEnLigneReserveeAuGerant() {
+        long t = creerTerrain(10000, 60);
+        Reponse r = reserver(t, a(dans(5), 10, 0));
+        long id = r.json().get("reservation").get("id").asLong();
+        String motif = "{\"motif\":\"Terrain inondé\"}";
+        assertThat(envoyer("POST", "/reservations/" + id + "/annulation", motif, jeton("ACCUEIL")).statut()).isEqualTo(403);
+        Reponse ok = envoyer("POST", "/reservations/" + id + "/annulation", motif, jeton("GERANT"));
+        assertThat(ok.statut()).as(ok.corps()).isEqualTo(200);
+        assertThat(SmsDeTest.DERNIERS.get("+221771234567")).contains("rembours");
+    }
+
+    @Test
+    void especesAuComptoirMonnaieRendue() {
+        long t = creerTerrain(10000, 60);
+        String sans = """
+                {"terrainId":%d,"debut":"%s","clientNom":"Moussa Fall","clientTelephone":"70 111 22 33","moyenPaiement":"especes","especesRecues":%d}
+                """;
+        Reponse peu = envoyer("POST", "/reservations/comptoir", sans.formatted(t, a(dans(3), 10, 0), 5000), null);
+        assertThat(peu.statut()).isEqualTo(401);
+        Reponse insuffisant = executer(java.net.http.HttpRequest.newBuilder(url("/reservations/comptoir"))
+                .header("Content-Type", "application/json").header("Authorization", "Bearer " + jeton("ACCUEIL"))
+                .header("Idempotency-Key", UUID.randomUUID().toString())
+                .POST(java.net.http.HttpRequest.BodyPublishers.ofString(sans.formatted(t, a(dans(3), 10, 0), 5000))).build());
+        assertThat(insuffisant.json().get("code").asString()).isEqualTo("ESPECES_INSUFFISANTES");
+        Reponse ok = executer(java.net.http.HttpRequest.newBuilder(url("/reservations/comptoir"))
+                .header("Content-Type", "application/json").header("Authorization", "Bearer " + jeton("ACCUEIL"))
+                .header("Idempotency-Key", UUID.randomUUID().toString())
+                .POST(java.net.http.HttpRequest.BodyPublishers.ofString(sans.formatted(t, a(dans(3), 10, 0), 15000))).build());
+        assertThat(ok.statut()).as(ok.corps()).isEqualTo(201);
+        assertThat(ok.json().get("reservation").get("especesRecues").asLong()).isEqualTo(15000);
+        assertThat(ok.json().get("reservation").get("monnaieRendue").asLong()).isEqualTo(5000);
+        // Reimpression du recu : code du ticket rendu au personnel du comptoir, pas au controleur.
+        long id = ok.json().get("reservation").get("id").asLong();
+        assertThat(envoyer("POST", "/reservations/" + id + "/recu", null, jeton("CONTROLEUR")).statut()).isEqualTo(403);
+        Reponse recu = envoyer("POST", "/reservations/" + id + "/recu", null, jeton("ACCUEIL"));
+        assertThat(recu.json().get("codeTicket").asString()).isNotBlank();
+        assertThat(recu.json().get("especesRecues").asLong()).isEqualTo(15000);
+    }
+
+    @Test
+    void scanParReferenceEnSecours() {
+        long t = creerTerrain(10000, 60);
+        Reponse r = reserver(t, a(dans(1), 18, 0));
+        String reference = r.json().get("reservation").get("reference").asString();
+        Reponse scan = envoyer("POST", "/tickets/scan", "{\"code\":\"" + reference.toLowerCase() + "\"}", jeton("ACCUEIL"));
+        assertThat(scan.json().get("verdict").asString()).isEqualTo("VALIDE");
     }
 
     @Test
@@ -272,11 +361,52 @@ class ReservationsApiIT extends IntegrationTest {
     }
 
     @Test
+    void annonceAvecGalerieEtLocalite() {
+        String gerant = jeton("GERANT");
+        long sport = envoyer("POST", "/sports", "{\"nom\":\"" + unique("Sport") + "\",\"ordre\":1}", gerant).json().get("id").asLong();
+        String corps = """
+                {"sportId":%d,"nom":"%s","localite":"Liberté 6, Dakar","capacite":10,"dureeCreneauMinutes":60,
+                 "tarifHeure":10000,"ordre":1,"photos":%s}
+                """;
+        String nom = unique("Terrain");
+        Reponse cree = envoyer("POST", "/terrains", corps.formatted(sport, nom,
+                "[\"/images/demo/foot-coin.jpg\",\"https://exemple.sn/terrain.jpg\",\"/videos/demo/presentation.mp4\"]"), gerant);
+        assertThat(cree.statut()).as(cree.corps()).isEqualTo(201);
+        long id = cree.json().get("id").asLong();
+
+        JsonNode lu = get("/terrains/" + id, null).json();
+        assertThat(lu.get("localite").asString()).isEqualTo("Liberté 6, Dakar");
+        assertThat(lu.get("photos")).hasSize(3);
+        assertThat(lu.get("photoUrl").asString()).isEqualTo("/images/demo/foot-coin.jpg");
+
+        // Publie : modification refusee ; on le depublie d'abord.
+        assertThat(envoyer("PUT", "/terrains/" + id, corps.formatted(sport, nom, "[]"), gerant)
+                .json().get("code").asString()).isEqualTo("TERRAIN_PUBLIE");
+        envoyer("PATCH", "/terrains/" + id + "/statut", "{\"statut\":\"BROUILLON\"}", gerant);
+
+        // Nouvel ordre : la couverture change.
+        Reponse modifie = envoyer("PUT", "/terrains/" + id, corps.formatted(sport, nom,
+                "[\"https://exemple.sn/terrain.jpg\",\"/images/demo/foot-coin.jpg\"]"), gerant);
+        assertThat(modifie.statut()).as(modifie.corps()).isEqualTo(200);
+        assertThat(modifie.json().get("photoUrl").asString()).isEqualTo("https://exemple.sn/terrain.jpg");
+        assertThat(modifie.json().get("photos").get(1).asString()).isEqualTo("/images/demo/foot-coin.jpg");
+
+        // Adresse refusee, et 10 photos au plus.
+        assertThat(envoyer("PUT", "/terrains/" + id, corps.formatted(sport, nom, "[\"javascript:alert(1)\"]"), gerant)
+                .statut()).isEqualTo(400);
+        String onze = "[" + String.join(",", java.util.Collections.nCopies(11, "\"/images/demo/foot-coin.jpg\"")) + "]";
+        assertThat(envoyer("PUT", "/terrains/" + id, corps.formatted(sport, nom, onze), gerant).statut()).isEqualTo(400);
+    }
+
+    @Test
     void seulLeGerantConfigureLesTerrains() {
         assertThat(envoyer("POST", "/sports", "{\"nom\":\"X\",\"ordre\":1}", jeton("ACCUEIL")).statut()).isEqualTo(403);
         assertThat(envoyer("POST", "/sports", "{\"nom\":\"X\",\"ordre\":1}", null).statut()).isEqualTo(401);
         assertThat(get("/terrains", null).statut()).isEqualTo(200);
         assertThat(get("/marque", null).json().get("nom").asString()).isNotBlank();
         assertThat(get("/horaires", null).json()).hasSize(7);
+        Reponse tendances = get("/terrains/tendances?nombre=3", null);
+        assertThat(tendances.statut()).isEqualTo(200);
+        assertThat(tendances.json().size()).isLessThanOrEqualTo(3);
     }
 }

@@ -97,27 +97,27 @@ public class CreationReservationTransaction {
                     "Payez avec Wave, Orange Money, Mixx by Yas ou par carte.", "moyenPaiement");
         }
         String telephone = Telephone.normaliser(s.clientTelephone()).orElseThrow(() -> new RequeteInvalideException(
-                "TELEPHONE_INVALIDE", "Indiquez un numero senegalais a 9 chiffres.", "clientTelephone"));
+                "TELEPHONE_INVALIDE", "Indiquez un numéro sénégalais à 9 chiffres.", "clientTelephone"));
 
         Terrain terrain = terrains.verrouiller(s.terrainId())
                 .filter(t -> t.isActif() && t.getSport().isActif())
                 .orElseThrow(() -> new RequeteInvalideException("TERRAIN_INDISPONIBLE",
-                        "Ce terrain n'est pas reservable.", "terrainId"));
+                        "Ce terrain n'est pas réservable.", "terrainId"));
         Creneaux.Creneau creneau = creneaux.commencantA(terrain, s.debut()).orElseThrow(() ->
-                new RequeteInvalideException("CRENEAU_INVALIDE", "Ce creneau n'existe pas pour ce terrain.", "debut"));
+                new RequeteInvalideException("CRENEAU_INVALIDE", "Ce créneau n'existe pas pour ce terrain.", "debut"));
         if (!creneau.debut().isAfter(maintenant)) {
-            throw new ConflitException("CRENEAU_PASSE", "Ce creneau est deja passe.");
+            throw new ConflitException("CRENEAU_PASSE", "Ce créneau est déjà passé.");
         }
         LocalDate limite = LocalDate.now(horloge).plusDays(Catalogue.JOURS_RESERVABLES);
         if (creneau.debut().atZone(Horloge.DAKAR).toLocalDate().isAfter(limite)) {
-            throw new RequeteInvalideException("DATE_HORS_PERIODE", "On ne reserve pas aussi loin a l'avance.", "debut");
+            throw new RequeteInvalideException("DATE_HORS_PERIODE", "On ne réserve pas aussi loin à l'avance.", "debut");
         }
         if (blocages.entre(creneau.debut(), creneau.fin()).stream()
                 .anyMatch(b -> b.chevauche(terrain.getId(), creneau.debut(), creneau.fin()))) {
-            throw new ConflitException("CRENEAU_BLOQUE", "Ce creneau est ferme a la reservation.");
+            throw new ConflitException("CRENEAU_BLOQUE", "Ce créneau est fermé à la réservation.");
         }
         if (reservations.chevauchement(terrain.getId(), creneau.debut(), creneau.fin(), OCCUPANTS)) {
-            throw new ConflitException("CRENEAU_PRIS", "Ce creneau vient d'etre reserve. Choisissez-en un autre.");
+            throw new ConflitException("CRENEAU_PRIS", "Ce créneau vient d'être réservé. Choisissez-en un autre.");
         }
 
         String jeton = canal == Canal.APP ? JetonSuivi.generer() : null;
@@ -125,6 +125,10 @@ public class CreationReservationTransaction {
                 creneau.prix(), canal, s.moyenPaiement(), s.clientNom().trim(), telephone,
                 jeton == null ? null : JetonSuivi.empreinte(jeton), JetonSuivi.codeTicket(),
                 UtilisateurCourant.identifiant().orElse(null)));
+
+        if (canal == Canal.COMPTOIR) {
+            r.noterEspeces(s.especesRecues());
+        }
 
         Paiement paiement = null;
         if (canal == Canal.APP) {
@@ -142,7 +146,8 @@ public class CreationReservationTransaction {
                 ? EvenementSortant.Type.RESERVATION_CONFIRMEE : EvenementSortant.Type.STATUT_CHANGE, r.getId(), maintenant));
         publication.publishEvent(new ChangementPublic(ChangementPublic.Sujet.DISPONIBILITES));
 
-        ReservationVue vue = canal == Canal.APP ? ReservationVue.pourClient(r) : ReservationVue.pourPersonnel(r);
+        // Au comptoir aussi, la vue client : le code du ticket est imprime sur le recu remis au joueur.
+        ReservationVue vue = ReservationVue.pourClient(r);
         String reponse = json.writeValueAsString(new ReservationCreee(vue, jeton, paiement));
         if (cleIdempotence != null) {
             idempotence.memoriser(cleIdempotence, r.getId(), reponse);

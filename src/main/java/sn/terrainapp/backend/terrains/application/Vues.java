@@ -30,14 +30,26 @@ public final class Vues {
         }
     }
 
-    public record TerrainVue(long id, long sportId, String sport, String nom, String description, String surface,
-                             int capacite, List<String> equipements, String photoUrl, int dureeCreneauMinutes,
-                             long tarifHeure, List<PlageVue> plages, boolean actif, int ordre, long version) {
+    /**
+     * photoUrl : couverture (premiere photo de la galerie). noteMoyenne et
+     * nombreAvis : avis visibles des joueurs (null / 0 sans avis).
+     */
+    public record TerrainVue(long id, long sportId, String sport, String nom, String description, String localite,
+                             Double latitude, Double longitude, String surface, int capacite, List<String> equipements, String photoUrl,
+                             List<String> photos, int dureeCreneauMinutes,
+                             long tarifHeure, List<PlageVue> plages, boolean actif, int ordre, long version,
+                             Double noteMoyenne, long nombreAvis, List<HoraireVue> horaires, String statut) {
         public static TerrainVue de(Terrain t) {
+            return de(t, null, 0);
+        }
+
+        public static TerrainVue de(Terrain t, Double noteMoyenne, long nombreAvis) {
             return new TerrainVue(t.getId(), t.getSport().getId(), t.getSport().getNom(), t.getNom(), t.getDescription(),
-                    t.getSurface(), t.getCapacite(), t.listeEquipements(), t.getPhotoUrl(), t.getDureeCreneauMinutes(),
+                    t.getLocalite(), t.getLatitude(), t.getLongitude(), t.getSurface(), t.getCapacite(), t.listeEquipements(), t.getPhotoUrl(),
+                    List.copyOf(t.getPhotos()), t.getDureeCreneauMinutes(),
                     t.getTarifHeure(), t.getPlages().stream().map(PlageVue::de).toList(), t.isActif(), t.getOrdre(),
-                    t.getVersion());
+                    t.getVersion(), noteMoyenne, nombreAvis, t.getHoraires().stream().map(HoraireVue::de).toList(),
+                    t.getStatut().name());
         }
     }
 
@@ -45,6 +57,10 @@ public final class Vues {
         public static HoraireVue de(HoraireOuverture h) {
             return new HoraireVue(h.getJourSemaine().getValue(), h.isOuvert(), h.getOuverture(), h.getFermeture(),
                     h.passeMinuit());
+        }
+
+        public static HoraireVue de(sn.terrainapp.backend.terrains.domaine.HoraireTerrain h) {
+            return new HoraireVue(h.getJour(), h.isOuvert(), h.getOuverture(), h.getFermeture(), h.passeMinuit());
         }
     }
 

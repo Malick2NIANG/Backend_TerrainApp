@@ -35,6 +35,7 @@ import tools.jackson.databind.json.JsonMapper;
                 "app.auth.seed.controleur.password=Controleur-Test-2026",
                 "app.auth.seed.admin.password=Admin-Test-2026",
                 "app.photos.dossier=target/photos-tests",
+                "app.videos.dossier=target/videos-tests",
                 // Entree acceptee 2 jours avant : un creneau de demain se scanne.
                 "app.ticket.marge-avant-minutes=2880",
                 // Les tests creent beaucoup de reservations depuis la meme IP.
@@ -42,6 +43,7 @@ import tools.jackson.databind.json.JsonMapper;
                 "app.limitation.suivi-par-minute=100000",
                 "app.limitation.connexions-par-minute=100000"
         })
+@org.springframework.context.annotation.Import(SmsDeTest.class)
 public abstract class IntegrationTest {
 
     @ServiceConnection

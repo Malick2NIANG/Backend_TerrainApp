@@ -29,7 +29,7 @@ import sn.terrainapp.backend.paiements.domaine.Paiement;
 import sn.terrainapp.backend.paiements.domaine.StatutPaiement;
 import sn.terrainapp.backend.paiements.infrastructure.NotificationRecueRepository;
 import sn.terrainapp.backend.paiements.infrastructure.PaiementRepository;
-import sn.terrainapp.backend.reservations.application.JetonSuivi;
+import sn.terrainapp.backend.reservations.application.JetonsAcces;
 import sn.terrainapp.backend.reservations.domaine.Canal;
 import sn.terrainapp.backend.reservations.domaine.Reservation;
 import sn.terrainapp.backend.reservations.domaine.StatutReservation;
@@ -61,11 +61,15 @@ public class SuiviPaiements {
     private final Clock horloge;
     private final Duration delaiExpiration;
 
+    private final JetonsAcces jetonsAcces;
+
     public SuiviPaiements(PaymentProvider prestataire, PaiementService paiementService, PaiementRepository paiements,
                           NotificationRecueRepository notifications, ReservationRepository reservations,
                           EvenementSortantRepository evenements, ApplicationEventPublisher publication,
                           JournalActions journal, Clock horloge,
-                          @Value("${app.paiement.delai-expiration-minutes:15}") long delaiExpirationMinutes) {
+                          @Value("${app.paiement.delai-expiration-minutes:15}") long delaiExpirationMinutes,
+                          JetonsAcces jetonsAcces) {
+        this.jetonsAcces = jetonsAcces;
         this.prestataire = prestataire;
         this.paiementService = paiementService;
         this.paiements = paiements;
@@ -86,11 +90,11 @@ public class SuiviPaiements {
     public PaiementInitVue relancer(long reservationId, String jeton) {
         Reservation r = reservations.verrouiller(reservationId)
                 .filter(x -> x.getCanal() == Canal.APP)
-                .filter(x -> JetonSuivi.correspond(jeton, x.getJetonSuiviEmpreinte()))
-                .orElseThrow(() -> new RessourceIntrouvableException("Reservation introuvable."));
+                .filter(x -> jetonsAcces.autorise(reservationId, jeton, x.getJetonSuiviEmpreinte()))
+                .orElseThrow(() -> new RessourceIntrouvableException("Réservation introuvable."));
         if (r.getStatut() != StatutReservation.EN_ATTENTE_PAIEMENT) {
             throw new ConflitException("PAIEMENT_IMPOSSIBLE", r.getStatut() == StatutReservation.CONFIRMEE
-                    ? "Cette reservation est deja payee." : "Cette reservation n'est plus valable : reservez a nouveau.");
+                    ? "Cette réservation est déjà payée." : "Cette réservation n'est plus valable : réservez à nouveau.");
         }
         IssuePaiement issue = paiementService.payerEnLigne(r);
         apresChangement(r, Instant.now(horloge));
