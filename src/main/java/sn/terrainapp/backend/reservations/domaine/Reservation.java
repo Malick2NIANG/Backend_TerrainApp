@@ -91,6 +91,10 @@ public class Reservation {
     @Column(name = "annulee_par")
     private String annuleePar;
 
+    /** Raison donnee par le personnel (client prevenu par SMS). */
+    @Column(name = "motif_annulation", length = 200)
+    private String motifAnnulation;
+
     @Column(name = "cree_par")
     private String creePar;
 
@@ -171,6 +175,11 @@ public class Reservation {
         }
     }
 
+    public void annuler(String par, Instant quand, String motif) {
+        annuler(par, quand);
+        this.motifAnnulation = motif;
+    }
+
     public void annuler(String par, Instant quand) {
         if (statut != StatutReservation.CONFIRMEE && statut != StatutReservation.EN_ATTENTE_PAIEMENT) {
             throw new ReservationInterditeException("STATUT_INCOMPATIBLE", "Cette réservation ne peut plus être annulée.");
@@ -209,6 +218,7 @@ public class Reservation {
     public String getCodeTicket() { return codeTicket; }
     public Instant getPayeeLe() { return payeeLe; }
     public Long getAbonnementId() { return abonnementId; }
+    public String getMotifAnnulation() { return motifAnnulation; }
     public Instant getScanneLe() { return scanneLe; }
     public Instant getCreeLe() { return creeLe; }
     public long getVersion() { return version; }

@@ -290,9 +290,25 @@ class ReservationsApiIT extends IntegrationTest {
         // Annulation par l'accueil : creneau libere.
         long id = res.get("id").asLong();
         assertThat(envoyer("POST", "/reservations/" + id + "/annulation", null, controleur).statut()).isEqualTo(403);
-        Reponse annul = envoyer("POST", "/reservations/" + id + "/annulation", null, jeton("ACCUEIL"));
+        assertThat(envoyer("POST", "/reservations/" + id + "/annulation", null, jeton("ACCUEIL"))
+                .json().get("code").asString()).isEqualTo("MOTIF_REQUIS");
+        Reponse annul = envoyer("POST", "/reservations/" + id + "/annulation", "{\"motif\":\"Le client a demandé\"}", jeton("ACCUEIL"));
         assertThat(annul.json().get("statut").asString()).isEqualTo("ANNULEE");
+        assertThat(annul.json().get("motifAnnulation").asString()).isEqualTo("Le client a demandé");
+        assertThat(SmsDeTest.DERNIERS.get("+221771234567")).contains("annulée");
         assertThat(reserver(t, debut).statut()).isEqualTo(201);
+    }
+
+    @Test
+    void annulationDUneReservationPayeeEnLigneReserveeAuGerant() {
+        long t = creerTerrain(10000, 60);
+        Reponse r = reserver(t, a(dans(5), 10, 0));
+        long id = r.json().get("reservation").get("id").asLong();
+        String motif = "{\"motif\":\"Terrain inondé\"}";
+        assertThat(envoyer("POST", "/reservations/" + id + "/annulation", motif, jeton("ACCUEIL")).statut()).isEqualTo(403);
+        Reponse ok = envoyer("POST", "/reservations/" + id + "/annulation", motif, jeton("GERANT"));
+        assertThat(ok.statut()).as(ok.corps()).isEqualTo(200);
+        assertThat(SmsDeTest.DERNIERS.get("+221771234567")).contains("rembours");
     }
 
     @Test

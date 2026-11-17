@@ -109,9 +109,12 @@ public class ReservationController {
 
     @PostMapping("/reservations/{id}/annulation")
     @PreAuthorize("hasAnyRole('ACCUEIL', 'GERANT')")
-    @Operation(summary = "Annuler une reservation (le creneau est libere)")
-    public ReservationVue annuler(@PathVariable long id) {
-        return suivi.annulerParPersonnel(id);
+    @Operation(summary = "Annuler une reservation avec un motif (creneau libere, client prevenu par SMS)")
+    public ReservationVue annuler(@PathVariable long id, @RequestBody(required = false) DemandeAnnulation demande) {
+        return suivi.annulerParPersonnel(id, demande == null ? null : demande.motif());
+    }
+
+    public record DemandeAnnulation(String motif) {
     }
 
     public record DemandeScan(@NotBlank String code) {

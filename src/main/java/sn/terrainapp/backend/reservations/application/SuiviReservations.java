@@ -1,14 +1,18 @@
 package sn.terrainapp.backend.reservations.application;
 
+import static sn.terrainapp.backend.commun.audit.Libelles.fcfa;
+
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.EnumSet;
 import java.util.List;
 
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,10 +20,16 @@ import sn.terrainapp.backend.avis.infrastructure.AvisRepository;
 import sn.terrainapp.backend.commun.audit.JournalActions;
 import sn.terrainapp.backend.commun.audit.JournalActions.Domaine;
 import sn.terrainapp.backend.commun.diffusion.ChangementPublic;
+import sn.terrainapp.backend.commun.erreurs.ConflitException;
+import sn.terrainapp.backend.commun.erreurs.RequeteInvalideException;
 import sn.terrainapp.backend.commun.erreurs.RessourceIntrouvableException;
 import sn.terrainapp.backend.commun.securite.UtilisateurCourant;
 import sn.terrainapp.backend.commun.temps.Horloge;
+import sn.terrainapp.backend.marque.Marque;
+import sn.terrainapp.backend.reservations.domaine.Canal;
 import sn.terrainapp.backend.reservations.domaine.Reservation;
+import sn.terrainapp.backend.security.Role;
+import sn.terrainapp.backend.sms.EnvoiSms;
 import sn.terrainapp.backend.reservations.domaine.StatutReservation;
 import sn.terrainapp.backend.reservations.infrastructure.ReservationRepository;
 import sn.terrainapp.backend.tempsreel.EvenementSortant;
@@ -36,6 +46,9 @@ public class SuiviReservations {
     private final Clock horloge;
     private final JetonsAcces jetonsAcces;
     private final AvisRepository avis;
+    private final EnvoiSms sms;
+    private final Marque marque;
+    private static final DateTimeFormatter JOUR = DateTimeFormatter.ofPattern("d/MM 'à' HH:mm");
 
     /** Reservation retrouvee par code SMS, avec son jeton d'acces (90 jours). */
     public record ReservationRetrouvee(ReservationVue reservation, String jetonAcces) {
@@ -43,8 +56,10 @@ public class SuiviReservations {
 
     public SuiviReservations(ReservationRepository reservations, EvenementSortantRepository evenements,
                              ApplicationEventPublisher publication, JournalActions journal, Clock horloge,
-                             JetonsAcces jetonsAcces, AvisRepository avis) {
+                             JetonsAcces jetonsAcces, AvisRepository avis, EnvoiSms sms, Marque marque) {
         this.avis = avis;
+        this.sms = sms;
+        this.marque = marque;
         this.jetonsAcces = jetonsAcces;
         this.reservations = reservations;
         this.evenements = evenements;
@@ -92,16 +107,35 @@ public class SuiviReservations {
                 .orElseThrow(() -> new RessourceIntrouvableException("Réservation introuvable."));
     }
 
-    /** Annulation par l'accueil ou le gerant : le creneau est libere aussitot. */
+    /**
+     * Annulation par l'accueil ou le gerant, avec un motif (le client est
+     * prevenu par SMS). Impossible une fois le creneau commence. Une
+     * reservation payee en ligne (a rembourser) : le gerant seulement.
+     */
     @Transactional
-    public ReservationVue annulerParPersonnel(long id) {
+    public ReservationVue annulerParPersonnel(long id, String motifSaisi) {
+        String motif = motifSaisi == null ? "" : motifSaisi.trim();
+        if (motif.length() < 3 || motif.length() > 200) {
+            throw new RequeteInvalideException("MOTIF_REQUIS", "Indiquez le motif de l'annulation.", "motif");
+        }
         Reservation r = reservations.verrouiller(id)
                 .orElseThrow(() -> new RessourceIntrouvableException("Réservation introuvable."));
         Instant maintenant = Instant.now(horloge);
-        r.annuler(UtilisateurCourant.identifiant().orElse("systeme"), maintenant);
+        if (!r.getDebut().isAfter(maintenant)) {
+            throw new ConflitException("CRENEAU_COMMENCE", "Le créneau a commencé : la réservation ne peut plus être annulée.");
+        }
+        boolean aRembourser = r.getCanal() == Canal.APP && r.getPayeeLe() != null;
+        if (aRembourser && UtilisateurCourant.role().filter(x -> x == Role.GERANT).isEmpty()) {
+            throw new AccessDeniedException("Réservation payée en ligne : seul le gérant peut l'annuler (remboursement à faire).");
+        }
+        r.annuler(UtilisateurCourant.identifiant().orElse("systeme"), maintenant, motif);
         evenements.save(new EvenementSortant(EvenementSortant.Type.STATUT_CHANGE, r.getId(), maintenant));
         publication.publishEvent(new ChangementPublic(ChangementPublic.Sujet.DISPONIBILITES));
-        journal.enregistrer(Domaine.RESERVATION, "ANNULATION", r.getReference(), "a annulé la réservation " + r.getReference());
+        journal.enregistrer(Domaine.RESERVATION, "ANNULATION", r.getReference(), "a annulé la réservation " + r.getReference()
+                + " (" + motif + ")" + (aRembourser ? " : " + fcfa(r.getMontant()) + " à rembourser" : ""));
+        sms.envoyer(r.getClientTelephone(), marque.nom() + " : votre réservation " + r.getReference() + " du "
+                + JOUR.format(r.getDebut().atZone(Horloge.DAKAR)) + " est annulée (" + motif + ")."
+                + (aRembourser ? " Vous serez remboursé de " + fcfa(r.getMontant()) + "." : ""));
         return ReservationVue.pourPersonnel(r);
     }
 }
