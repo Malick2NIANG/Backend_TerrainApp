@@ -9,8 +9,9 @@ import jakarta.validation.ConstraintValidatorContext;
 public class UrlImageValidator implements ConstraintValidator<UrlImage, String> {
 
     static final int LONGUEUR_MAX = 500;
+    /** Photo deposee, avec en option son cadrage d'affichage (#c=x,y en %). */
     private static final Pattern PHOTO_LOCALE =
-            Pattern.compile("^/api/v1/photos/[a-f0-9-]{36}\\.(jpg|png)$");
+            Pattern.compile("^/api/v1/photos/[a-f0-9-]{36}\\.(jpg|png)(#c=\\d{1,3},\\d{1,3})?$");
     /**
      * Image fournie avec les fronts (dossier public/images des apps Client et
      * Manager, ex. /images/produits/jus-de-bissap.jpg). Pas de point hors de
