@@ -39,6 +39,11 @@ if ($Scenario -eq 'arreter') {
 
 $scenarios = if ($Scenario -eq 'tout') { @('smoke', 'doublons', 'course-creneau', 'reservations', 'lecture-catalogue') } else { @($Scenario) }
 New-Item -ItemType Directory -Force -Path resultats | Out-Null
+# k6 rejoint le reseau de la pile et appelle le backend directement : le
+# relais de ports de Docker Desktop (host.docker.internal) coupe des connexions
+# bien avant l'appli au-dela de quelques centaines de joueurs.
+if (-not $env:BASE_URL) { $env:BASE_URL = 'http://backend:8080/api/v1' }
+$env:ALLOWED_HOSTS = (@($env:ALLOWED_HOSTS, 'backend') | Where-Object { $_ }) -join ','
 $echecs = 0
 foreach ($s in $scenarios) {
   if (-not (Test-Path "$s.js")) { throw "Scenario inconnu : $s.js" }
@@ -51,7 +56,7 @@ foreach ($s in $scenarios) {
   }
   $horodatage = Get-Date -Format 'yyyyMMdd-HHmmss'
   Write-Host "=== $s ==="
-  docker run --rm -i --add-host host.docker.internal:host-gateway `
+  docker run --rm -i --network terrainapp-charge_default `
     -v "${PWD}:/scripts" -w /scripts `
     -e BASE_URL -e ALLOWED_HOSTS -e PALIER -e PALIERS -e JOUEURS -e K6_MDP_GERANT -e K6_ID_GERANT `
     -e K6_WEB_DASHBOARD=true -e "K6_WEB_DASHBOARD_EXPORT=resultats/$s-$horodatage.html" `

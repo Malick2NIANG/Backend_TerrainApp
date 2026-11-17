@@ -15,6 +15,8 @@ cd Backend_TerrainApp\load-tests
 
 Un scénario seul : `.\lancer.ps1 smoke`. Sous Linux/macOS : `./lancer.sh` avec les mêmes arguments. Docker Desktop suffit : k6 tourne dans l'image `grafana/k6`.
 
+k6 rejoint le réseau Docker de la pile et appelle `http://backend:8080` directement : passer par `localhost:8091` mesurerait surtout le relais de ports de Docker Desktop, qui coupe des connexions (`EOF`, `dial: i/o timeout`) au-delà de quelques centaines de joueurs simultanés.
+
 Rapports : `resultats/<scénario>-<date>.html` (tableau de bord k6, à ouvrir dans le navigateur) et `.json` (résumé chiffré).
 
 ## Les scénarios

@@ -26,6 +26,9 @@ case "$scenario" in
 esac
 
 mkdir -p resultats
+# k6 rejoint le reseau de la pile (voir lancer.ps1).
+export BASE_URL="${BASE_URL:-http://backend:8080/api/v1}"
+export ALLOWED_HOSTS="${ALLOWED_HOSTS:+$ALLOWED_HOSTS,}backend"
 echecs=0
 for s in "${scenarios[@]}"; do
   [ -f "$s.js" ] || { echo "Scenario inconnu : $s.js" >&2; exit 2; }
@@ -35,7 +38,7 @@ for s in "${scenarios[@]}"; do
     exit 1; }
   horodatage="$(date +%Y%m%d-%H%M%S)"
   echo "=== $s ==="
-  MSYS_NO_PATHCONV=1 docker run --rm -i --add-host host.docker.internal:host-gateway \
+  MSYS_NO_PATHCONV=1 docker run --rm -i --network terrainapp-charge_default \
     -v "$PWD:/scripts" -w /scripts \
     -e BASE_URL -e ALLOWED_HOSTS -e PALIER -e PALIERS -e JOUEURS -e K6_MDP_GERANT -e K6_ID_GERANT \
     -e K6_WEB_DASHBOARD=true -e K6_WEB_DASHBOARD_EXPORT="resultats/$s-$horodatage.html" \
