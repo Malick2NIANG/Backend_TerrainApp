@@ -40,6 +40,10 @@ services:
       APP_JWT_SECRET: ${CHARGE_JWT_SECRET:?Lancez via lancer.ps1 ou lancer.sh}
       APP_AUTH_SEED_ENABLED: "true"
       APP_AUTH_SEED_GERANT_PASSWORD: ${K6_MDP_GERANT:?Lancez via lancer.ps1 ou lancer.sh}
+      # Le seed exige les 4 comptes ; seuls le gerant sert aux scenarios.
+      APP_AUTH_SEED_ACCUEIL_PASSWORD: ${CHARGE_MDP_ACCUEIL:?Lancez via lancer.ps1 ou lancer.sh}
+      APP_AUTH_SEED_CONTROLEUR_PASSWORD: ${CHARGE_MDP_CONTROLEUR:?Lancez via lancer.ps1 ou lancer.sh}
+      APP_AUTH_SEED_ADMIN_PASSWORD: ${CHARGE_MDP_ADMIN:?Lancez via lancer.ps1 ou lancer.sh}
       APP_PAIEMENT_PRESTATAIRE: simule
       APP_PAIEMENT_SIMULE_MODE: immediat
       APP_SMS_PRESTATAIRE: simule

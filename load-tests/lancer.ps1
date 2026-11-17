@@ -15,13 +15,15 @@ Set-Location $PSScriptRoot
 
 $fichierEnv = Join-Path $PSScriptRoot '.env.charge'
 function Nouveau-Secret { -join ((48..57) + (65..90) + (97..122) | Get-Random -Count 40 | ForEach-Object { [char]$_ }) }
-if (-not (Test-Path $fichierEnv)) {
-  @(
-    "CHARGE_MYSQL_PASSWORD=$(Nouveau-Secret)",
-    "CHARGE_MYSQL_ROOT_PASSWORD=$(Nouveau-Secret)",
-    "CHARGE_JWT_SECRET=$(Nouveau-Secret)$(Nouveau-Secret)",
-    "K6_MDP_GERANT=$(Nouveau-Secret)"
-  ) | Set-Content -Encoding ascii $fichierEnv
+# Complete .env.charge avec les secrets manquants (sans toucher aux existants).
+$cles = @('CHARGE_MYSQL_PASSWORD', 'CHARGE_MYSQL_ROOT_PASSWORD', 'CHARGE_JWT_SECRET', 'K6_MDP_GERANT',
+  'CHARGE_MDP_ACCUEIL', 'CHARGE_MDP_CONTROLEUR', 'CHARGE_MDP_ADMIN')
+$existant = if (Test-Path $fichierEnv) { Get-Content $fichierEnv } else { @() }
+foreach ($k in $cles) {
+  if (-not ($existant | Where-Object { $_ -like "$k=*" })) {
+    $v = if ($k -eq 'CHARGE_JWT_SECRET') { "$(Nouveau-Secret)$(Nouveau-Secret)" } else { Nouveau-Secret }
+    Add-Content -Encoding ascii $fichierEnv "$k=$v"
+  }
 }
 Get-Content $fichierEnv | ForEach-Object { $k, $v = $_ -split '=', 2; Set-Item -Path "env:$k" -Value $v }
 

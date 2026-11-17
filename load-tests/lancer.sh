@@ -7,15 +7,14 @@ cd "$(dirname "$0")"
 
 fichier_env=.env.charge
 secret() { LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom | head -c 40; }
-if [ ! -f "$fichier_env" ]; then
-  {
-    echo "CHARGE_MYSQL_PASSWORD=$(secret)"
-    echo "CHARGE_MYSQL_ROOT_PASSWORD=$(secret)"
-    echo "CHARGE_JWT_SECRET=$(secret)$(secret)"
-    echo "K6_MDP_GERANT=$(secret)"
-  } > "$fichier_env"
-  chmod 600 "$fichier_env"
-fi
+# Complete .env.charge avec les secrets manquants (sans toucher aux existants).
+touch "$fichier_env"; chmod 600 "$fichier_env"
+for k in CHARGE_MYSQL_PASSWORD CHARGE_MYSQL_ROOT_PASSWORD CHARGE_JWT_SECRET K6_MDP_GERANT \
+         CHARGE_MDP_ACCUEIL CHARGE_MDP_CONTROLEUR CHARGE_MDP_ADMIN; do
+  grep -q "^$k=" "$fichier_env" || {
+    if [ "$k" = CHARGE_JWT_SECRET ]; then v="$(secret)$(secret)"; else v="$(secret)"; fi
+    echo "$k=$v" >> "$fichier_env"; }
+done
 set -a; . "./$fichier_env"; set +a
 
 scenario="${1:?Usage : ./lancer.sh <demarrer|scenario|tout|arreter>}"
