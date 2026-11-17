@@ -95,6 +95,12 @@ public class Terrain {
     @OrderBy("debut")
     private List<PlageTarifaire> plages = new ArrayList<>();
 
+    /** Horaires propres au terrain (7 jours) ; vide : ceux du complexe. */
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "terrain_horaires", joinColumns = @JoinColumn(name = "terrain_id"))
+    @Fetch(FetchMode.SELECT)
+    private java.util.Set<HoraireTerrain> horaires = new java.util.HashSet<>();
+
     @Column(name = "cree_le", nullable = false)
     private Instant creeLe;
 
@@ -146,6 +152,25 @@ public class Terrain {
             p.rattacher(this);
             plages.add(p);
         }
+    }
+
+    /** Horaires propres (7 jours), ou liste vide pour reprendre ceux du complexe. */
+    public void remplacerHoraires(List<HoraireTerrain> nouveaux) {
+        horaires.clear();
+        horaires.addAll(nouveaux);
+    }
+
+    public boolean aSesHoraires() {
+        return !horaires.isEmpty();
+    }
+
+    /** Horaires propres de ce jour (ferme si le jour manque), quand le terrain a les siens. */
+    public java.util.Optional<HoraireTerrain> horaireDu(java.time.DayOfWeek jour) {
+        return horaires.stream().filter(h -> h.getJourSemaine() == jour).findFirst();
+    }
+
+    public List<HoraireTerrain> getHoraires() {
+        return horaires.stream().sorted(java.util.Comparator.comparingInt(HoraireTerrain::getJour)).toList();
     }
 
     private static String vide(String s) {

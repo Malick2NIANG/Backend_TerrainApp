@@ -39,6 +39,7 @@ import sn.terrainapp.backend.terrains.application.Vues.SportVue;
 import sn.terrainapp.backend.terrains.application.Vues.TerrainVue;
 import sn.terrainapp.backend.terrains.domaine.Blocage;
 import sn.terrainapp.backend.terrains.domaine.HoraireOuverture;
+import sn.terrainapp.backend.terrains.domaine.HoraireTerrain;
 import sn.terrainapp.backend.terrains.domaine.PlageTarifaire;
 import sn.terrainapp.backend.terrains.domaine.Sport;
 import sn.terrainapp.backend.terrains.domaine.Terrain;
@@ -73,7 +74,7 @@ public class GestionTerrains {
                                 @Size(max = MAX_PHOTOS, message = "10 photos ou vidéos au maximum.") List<@NotBlank @Size(max = 500) String> photos,
                                 @Min(30) @Max(240) int dureeCreneauMinutes,
                                 @Min(0) long tarifHeure, List<@Valid SaisiePlage> plages, Boolean actif,
-                                @Min(0) int ordre) {
+                                @Min(0) int ordre, List<@Valid SaisieHoraire> horaires) {
     }
 
     public record SaisieHoraire(@Min(1) @Max(7) int jour, boolean ouvert, @NotNull LocalTime ouverture,
@@ -179,6 +180,23 @@ public class GestionTerrains {
         }
         t.remplacerPlages(plages.stream().map(p -> new PlageTarifaire(p.libelle(), jours(p.jours()), p.debut(), p.fin(),
                 p.tarifHeure())).toList());
+        t.remplacerHoraires(horairesPropres(s.horaires()));
+    }
+
+    /** Horaires propres : vides (= ceux du complexe) ou les 7 jours, chacun une fois. */
+    private static List<HoraireTerrain> horairesPropres(List<SaisieHoraire> saisies) {
+        if (saisies == null || saisies.isEmpty()) {
+            return List.of();
+        }
+        if (saisies.size() != 7 || saisies.stream().map(SaisieHoraire::jour).distinct().count() != 7) {
+            throw new RequeteInvalideException("HORAIRES_INCOMPLETS", "Indiquez les horaires des 7 jours.", "horaires");
+        }
+        for (SaisieHoraire h : saisies) {
+            if (h.ouvert() && h.ouverture().equals(h.fermeture())) {
+                throw new RequeteInvalideException("HORAIRE_INVALIDE", "L'ouverture et la fermeture doivent être différentes.", "horaires");
+            }
+        }
+        return saisies.stream().map(h -> new HoraireTerrain(h.jour(), h.ouvert(), h.ouverture(), h.fermeture())).toList();
     }
 
     private static Set<DayOfWeek> jours(Set<Integer> numeros) {

@@ -17,13 +17,14 @@ import org.springframework.stereotype.Component;
 import sn.terrainapp.backend.commun.temps.Horloge;
 import sn.terrainapp.backend.terrains.domaine.Blocage;
 import sn.terrainapp.backend.terrains.domaine.HoraireOuverture;
+import sn.terrainapp.backend.terrains.domaine.HoraireTerrain;
 import sn.terrainapp.backend.terrains.domaine.PlageTarifaire;
 import sn.terrainapp.backend.terrains.domaine.Terrain;
 import sn.terrainapp.backend.terrains.infrastructure.HoraireOuvertureRepository;
 
 /**
  * Calcul des creneaux d'un terrain pour un jour d'ouverture : de l'ouverture
- * a la fermeture du complexe, par pas de la duree de creneau du terrain.
+ * a la fermeture (du terrain s'il a ses horaires, sinon du complexe), par pas de la duree de creneau du terrain.
  * Les creneaux apres minuit (fermeture 01:00) appartiennent au jour
  * d'ouverture. Prix : tarif horaire de la plage qui couvre le debut du
  * creneau, sinon celui du terrain, au prorata de la duree.
@@ -62,11 +63,26 @@ public class Creneaux {
         return Optional.of(new Instant[] {debut, fin});
     }
 
+    /**
+     * Ouverture d'un terrain ce jour : ses propres horaires s'il en a (jour
+     * absent = ferme), sinon ceux du complexe.
+     */
+    public Optional<Instant[]> ouverture(Terrain terrain, LocalDate jour, Map<DayOfWeek, HoraireOuverture> parJour) {
+        if (!terrain.aSesHoraires()) {
+            return ouverture(jour, parJour);
+        }
+        return terrain.horaireDu(jour.getDayOfWeek()).filter(HoraireTerrain::isOuvert).map(h -> {
+            Instant debut = LocalDateTime.of(jour, h.getOuverture()).atZone(Horloge.DAKAR).toInstant();
+            LocalDate jourFin = h.passeMinuit() ? jour.plusDays(1) : jour;
+            return new Instant[] {debut, LocalDateTime.of(jourFin, h.getFermeture()).atZone(Horloge.DAKAR).toInstant()};
+        });
+    }
+
     /** Creneaux du terrain pour ce jour, avec leur etat. */
     public List<Creneau> pour(Terrain terrain, LocalDate jour, Map<DayOfWeek, HoraireOuverture> parJour,
                               List<Occupation> occupations, List<Blocage> blocages, Instant maintenant) {
         List<Creneau> resultat = new ArrayList<>();
-        Optional<Instant[]> plage = ouverture(jour, parJour);
+        Optional<Instant[]> plage = ouverture(terrain, jour, parJour);
         if (plage.isEmpty()) {
             return resultat;
         }
