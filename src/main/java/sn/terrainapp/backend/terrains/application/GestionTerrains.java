@@ -146,7 +146,7 @@ public class GestionTerrains {
 
     public TerrainVue creerTerrain(SaisieTerrain s) {
         Terrain t = new Terrain(sport(s.sportId()));
-        appliquer(t, s);
+        appliquer(t, s, s.actif() == null || s.actif());
         t = terrains.save(t);
         journal.enregistrer(Domaine.TERRAIN, "CREATION", String.valueOf(t.getId()), "a créé le terrain "
                 + guillemets(t.getNom()) + " (" + fcfa(t.getTarifHeure()) + " / h)");
@@ -156,7 +156,14 @@ public class GestionTerrains {
 
     public TerrainVue modifierTerrain(long id, SaisieTerrain s) {
         Terrain t = terrains.findById(id).orElseThrow(() -> new RessourceIntrouvableException("Terrain introuvable."));
-        appliquer(t, s);
+        // Un terrain publie ne se modifie pas : des clients reservent sur ses
+        // tarifs et horaires. On le depublie (brouillon), on le modifie, on le republie.
+        if (t.getStatut() != sn.terrainapp.backend.terrains.domaine.StatutTerrain.BROUILLON) {
+            throw new ConflitException("TERRAIN_PUBLIE", t.isArchive()
+                    ? "Terrain archivé : restaurez-le d'abord."
+                    : "Terrain publié : dépubliez-le avant de le modifier (les réservations déjà prises sont conservées).");
+        }
+        appliquer(t, s, false);
         journal.enregistrer(Domaine.TERRAIN, "MODIFICATION", String.valueOf(id), "a modifié le terrain " + guillemets(t.getNom()));
         publier();
         return TerrainVue.de(t);
@@ -170,6 +177,10 @@ public class GestionTerrains {
         Terrain t = terrains.findById(id).orElseThrow(() -> new RessourceIntrouvableException("Terrain introuvable."));
         if (statut == null) {
             throw new RequeteInvalideException("STATUT_REQUIS", "Statut attendu : ACTIF, BROUILLON ou ARCHIVE.", "statut");
+        }
+        if (statut == sn.terrainapp.backend.terrains.domaine.StatutTerrain.ARCHIVE
+                && t.getStatut() == sn.terrainapp.backend.terrains.domaine.StatutTerrain.ACTIF) {
+            throw new ConflitException("TERRAIN_PUBLIE", "Terrain publié : dépubliez-le avant de l'archiver.");
         }
         if (statut == sn.terrainapp.backend.terrains.domaine.StatutTerrain.ARCHIVE) {
             long aVenir = reservations.countByTerrainIdAndStatutInAndDebutAfter(id, java.util.EnumSet.of(
@@ -187,7 +198,8 @@ public class GestionTerrains {
         return TerrainVue.de(t);
     }
 
-    private void appliquer(Terrain t, SaisieTerrain s) {
+    /** actif : publie a la creation ; une modification garde le brouillon (publication par PATCH statut). */
+    private void appliquer(Terrain t, SaisieTerrain s, boolean actif) {
         for (String media : s.photos() == null ? List.<String>of() : s.photos()) {
             if (!UrlImageValidator.estValide(media) && !UrlVideo.estValide(media)) {
                 throw new RequeteInvalideException("MEDIA_INVALIDE",
@@ -195,7 +207,7 @@ public class GestionTerrains {
             }
         }
         t.modifier(sport(s.sportId()), s.nom(), s.description(), s.localite(), s.surface(), s.capacite(),
-                s.equipements(), s.photos(), s.dureeCreneauMinutes(), s.tarifHeure(), s.actif() == null || s.actif(), s.ordre());
+                s.equipements(), s.photos(), s.dureeCreneauMinutes(), s.tarifHeure(), actif, s.ordre());
         if ((s.latitude() == null) != (s.longitude() == null)) {
             throw new RequeteInvalideException("GPS_INCOMPLET", "Position GPS : indiquez la latitude ET la longitude.", "latitude");
         }

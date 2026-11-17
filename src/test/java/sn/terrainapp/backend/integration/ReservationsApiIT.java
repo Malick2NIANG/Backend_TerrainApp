@@ -379,6 +379,11 @@ class ReservationsApiIT extends IntegrationTest {
         assertThat(lu.get("photos")).hasSize(3);
         assertThat(lu.get("photoUrl").asString()).isEqualTo("/images/demo/foot-coin.jpg");
 
+        // Publie : modification refusee ; on le depublie d'abord.
+        assertThat(envoyer("PUT", "/terrains/" + id, corps.formatted(sport, nom, "[]"), gerant)
+                .json().get("code").asString()).isEqualTo("TERRAIN_PUBLIE");
+        envoyer("PATCH", "/terrains/" + id + "/statut", "{\"statut\":\"BROUILLON\"}", gerant);
+
         // Nouvel ordre : la couverture change.
         Reponse modifie = envoyer("PUT", "/terrains/" + id, corps.formatted(sport, nom,
                 "[\"https://exemple.sn/terrain.jpg\",\"/images/demo/foot-coin.jpg\"]"), gerant);

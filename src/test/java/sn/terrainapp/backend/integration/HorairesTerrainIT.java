@@ -38,7 +38,8 @@ class HorairesTerrainIT extends IntegrationTest {
         }
         assertThat(heures).containsExactly("10:00", "11:00");
 
-        // 6 jours seulement : refuse.
+        // 6 jours seulement : refuse (modification d'un brouillon).
+        envoyer("PATCH", "/terrains/" + id + "/statut", "{\"statut\":\"BROUILLON\"}", gerant);
         Reponse incomplet = envoyer("PUT", "/terrains/" + id, """
                 {"sportId":%d,"nom":"X","capacite":4,"dureeCreneauMinutes":60,"tarifHeure":10000,"ordre":1,
                  "horaires":[{"jour":1,"ouvert":true,"ouverture":"10:00","fermeture":"12:00"}]}
@@ -66,9 +67,11 @@ class HorairesTerrainIT extends IntegrationTest {
                         """.formatted(id, debut))).build());
         assertThat(r.statut()).as(r.corps()).isEqualTo(201);
         assertThat(envoyer("PATCH", "/terrains/" + id + "/statut", "{\"statut\":\"ARCHIVE\"}", gerant)
-                .json().get("code").asString()).isEqualTo("TERRAIN_RESERVE");
+                .json().get("code").asString()).isEqualTo("TERRAIN_PUBLIE");
         Reponse brouillon = envoyer("PATCH", "/terrains/" + id + "/statut", "{\"statut\":\"BROUILLON\"}", gerant);
         assertThat(brouillon.json().get("statut").asString()).isEqualTo("BROUILLON");
+        assertThat(envoyer("PATCH", "/terrains/" + id + "/statut", "{\"statut\":\"ARCHIVE\"}", gerant)
+                .json().get("code").asString()).isEqualTo("TERRAIN_RESERVE");
         assertThat(get("/terrains/" + id, null).statut()).isEqualTo(404);
         assertThat(envoyer("PATCH", "/terrains/" + id + "/statut", "{\"statut\":\"ACTIF\"}", gerant)
                 .json().get("statut").asString()).isEqualTo("ACTIF");
