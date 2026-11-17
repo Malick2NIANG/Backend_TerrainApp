@@ -117,4 +117,31 @@ class AbonnementsApiIT extends IntegrationTest {
         }
         assertThat(vu).isTrue();
     }
+
+    @Test
+    void plusieursJoursParSemaineEtDatesAuChoix() {
+        long t = creerTerrain();
+        String accueil = jeton("ACCUEIL");
+        LocalDate lundi = dans(7).with(java.time.temporal.TemporalAdjusters.next(java.time.DayOfWeek.MONDAY));
+        // Mardi et jeudi, 4 seances a partir du mardi.
+        Reponse hebdo = envoyer("POST", "/abonnements/apercu", """
+                {"terrainId":%d,"premiereSeance":"%s","frequence":"HEBDOMADAIRE","nombreSeances":4,"jours":[2,4]}
+                """.formatted(t, a(lundi.plusDays(1), 18)), accueil);
+        assertThat(hebdo.statut()).as(hebdo.corps()).isEqualTo(200);
+        java.util.List<String> jours = new java.util.ArrayList<>();
+        for (JsonNode s : hebdo.json().get("seances")) {
+            jours.add(Instant.parse(s.get("debut").asString()).atZone(Horloge.DAKAR).getDayOfWeek().name());
+        }
+        assertThat(jours).containsExactly("TUESDAY", "THURSDAY", "TUESDAY", "THURSDAY");
+
+        // Dates au choix : la 1re seance + 2 dates (doublon ignore).
+        Reponse cree = envoyer("POST", "/abonnements", """
+                {"terrainId":%d,"premiereSeance":"%s","frequence":"PERSONNALISEE","nombreSeances":3,
+                 "dates":["%s","%s","%s"],"clientNom":"Tournoi des écoles","clientTelephone":"77 444 55 66",
+                 "reglement":"SEANCE","remise":0}
+                """.formatted(t, a(lundi, 10), lundi.plusDays(10), lundi.plusDays(3), lundi.plusDays(3)), accueil);
+        assertThat(cree.statut()).as(cree.corps()).isEqualTo(201);
+        assertThat(cree.json().get("seances")).hasSize(3);
+        assertThat(cree.json().get("frequence").asString()).isEqualTo("PERSONNALISEE");
+    }
 }

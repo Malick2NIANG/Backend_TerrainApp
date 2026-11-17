@@ -49,6 +49,10 @@ public class Abonnement {
     @Column(nullable = false, length = 15)
     private Frequence frequence;
 
+    /** Hebdomadaire : jours de la semaine (1 = lundi ... 7), ex. "2,4" ; null : celui de la 1re seance. */
+    @Column(length = 20)
+    private String jours;
+
     @Column(name = "premiere_seance", nullable = false)
     private Instant premiereSeance;
 
@@ -96,6 +100,16 @@ public class Abonnement {
         this.remise = remise;
         this.creePar = creePar;
         this.statut = StatutAbonnement.ACTIF;
+    }
+
+    public void definirJours(java.util.Collection<Integer> choisis) {
+        this.jours = choisis == null || choisis.isEmpty() ? null
+                : choisis.stream().sorted().map(String::valueOf).collect(java.util.stream.Collectors.joining(","));
+    }
+
+    public java.util.List<Integer> getJours() {
+        return jours == null || jours.isBlank() ? java.util.List.of()
+                : java.util.Arrays.stream(jours.split(",")).map(Integer::valueOf).toList();
     }
 
     @PrePersist

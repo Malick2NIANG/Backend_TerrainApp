@@ -36,13 +36,14 @@ public class AbonnementController {
     }
 
     public record DemandeApercu(@NotNull Long terrainId, @NotNull Instant premiereSeance, @NotNull Frequence frequence,
-                                int nombreSeances) {
+                                int nombreSeances, java.util.Set<Integer> jours, java.util.List<java.time.LocalDate> dates) {
     }
 
     @PostMapping("/abonnements/apercu")
     @Operation(summary = "Seances prevues d'un abonnement : libres, ou pourquoi elles seront sautees")
     public Apercu apercu(@Valid @RequestBody DemandeApercu d) {
-        return gestion.apercu(d.terrainId(), d.premiereSeance(), d.frequence(), d.nombreSeances());
+        return gestion.apercu(d.terrainId(), d.premiereSeance(),
+                new GestionAbonnements.Regle(d.frequence(), d.nombreSeances(), d.jours(), d.dates()));
     }
 
     @PostMapping("/abonnements")

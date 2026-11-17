@@ -90,44 +90,71 @@ public class GestionAbonnements {
         this.horloge = horloge;
     }
 
-    /** Dates des seances : chaque semaine, ou le meme rang du jour chaque mois (5e semaine = dernier). */
-    static List<Instant> dates(Instant premiere, Frequence frequence, int nombre) {
+    /** Regle de recurrence : frequence, nombre de seances, jours de la semaine ou dates choisies. */
+    public record Regle(Frequence frequence, int nombre, java.util.Set<Integer> jours, List<LocalDate> dates) {
+    }
+
+    /**
+     * Dates des seances, a l'heure de la 1re : chaque semaine (aux jours
+     * choisis, sinon celui de la 1re seance), le meme rang du jour chaque mois
+     * (5e semaine = dernier), ou les dates choisies (avec la 1re, sans doublon).
+     */
+    static List<Instant> dates(Instant premiere, Regle regle) {
         ZonedDateTime z = premiere.atZone(Horloge.DAKAR);
         List<Instant> dates = new ArrayList<>();
         DayOfWeek jour = z.getDayOfWeek();
-        int rang = (z.getDayOfMonth() - 1) / 7 + 1;
-        for (int k = 0; k < nombre; k++) {
-            if (frequence == Frequence.HEBDOMADAIRE) {
-                dates.add(z.plusWeeks(k).toInstant());
-            } else {
-                YearMonth mois = YearMonth.from(z).plusMonths(k);
-                LocalDate d = rang >= 5
-                        ? mois.atEndOfMonth().with(TemporalAdjusters.previousOrSame(jour))
-                        : mois.atDay(1).with(TemporalAdjusters.dayOfWeekInMonth(rang, jour));
-                dates.add(ZonedDateTime.of(d, z.toLocalTime(), Horloge.DAKAR).toInstant());
+        if (regle.frequence() == Frequence.PERSONNALISEE) {
+            java.util.TreeSet<LocalDate> choisies = new java.util.TreeSet<>(regle.dates() == null ? List.of() : regle.dates());
+            choisies.add(z.toLocalDate());
+            choisies.forEach(d -> dates.add(ZonedDateTime.of(d, z.toLocalTime(), Horloge.DAKAR).toInstant()));
+            return dates;
+        }
+        if (regle.frequence() == Frequence.HEBDOMADAIRE) {
+            java.util.Set<Integer> jours = regle.jours() == null || regle.jours().isEmpty()
+                    ? java.util.Set.of(jour.getValue()) : regle.jours();
+            for (LocalDate d = z.toLocalDate(); dates.size() < regle.nombre(); d = d.plusDays(1)) {
+                if (jours.contains(d.getDayOfWeek().getValue())) {
+                    dates.add(ZonedDateTime.of(d, z.toLocalTime(), Horloge.DAKAR).toInstant());
+                }
             }
+            return dates;
+        }
+        int rang = (z.getDayOfMonth() - 1) / 7 + 1;
+        for (int k = 0; k < regle.nombre(); k++) {
+            YearMonth mois = YearMonth.from(z).plusMonths(k);
+            LocalDate d = rang >= 5
+                    ? mois.atEndOfMonth().with(TemporalAdjusters.previousOrSame(jour))
+                    : mois.atDay(1).with(TemporalAdjusters.dayOfWeekInMonth(rang, jour));
+            dates.add(ZonedDateTime.of(d, z.toLocalTime(), Horloge.DAKAR).toInstant());
         }
         return dates;
     }
 
     @Transactional(readOnly = true)
-    public Apercu apercu(long terrainId, Instant premiere, Frequence frequence, int nombre) {
+    public Apercu apercu(long terrainId, Instant premiere, Regle regle) {
         Terrain terrain = terrains.findById(terrainId).orElseThrow(() -> new RequeteInvalideException(
                 "TERRAIN_INDISPONIBLE", "Terrain introuvable.", "terrainId"));
-        return calculer(terrain, premiere, frequence, nombre);
+        return calculer(terrain, premiere, regle);
     }
 
-    private Apercu calculer(Terrain terrain, Instant premiere, Frequence frequence, int nombre) {
-        if (frequence == null) {
+    private Apercu calculer(Terrain terrain, Instant premiere, Regle regle) {
+        if (regle.frequence() == null) {
             throw new RequeteInvalideException("FREQUENCE_REQUISE", "Choisissez une fréquence.", "frequence");
         }
-        int max = frequence == Frequence.HEBDOMADAIRE ? MAX_HEBDO : MAX_MENSUEL;
-        if (nombre < 2 || nombre > max) {
-            throw new RequeteInvalideException("NOMBRE_SEANCES", "Entre 2 et " + max + " séances.", "nombreSeances");
+        if (regle.frequence() == Frequence.PERSONNALISEE) {
+            int n = regle.dates() == null ? 0 : regle.dates().size();
+            if (n < 1 || n > MAX_HEBDO) {
+                throw new RequeteInvalideException("DATES_REQUISES", "Choisissez entre 2 et " + MAX_HEBDO + " dates.", "dates");
+            }
+        } else {
+            int max = regle.frequence() == Frequence.HEBDOMADAIRE ? MAX_HEBDO : MAX_MENSUEL;
+            if (regle.nombre() < 2 || regle.nombre() > max) {
+                throw new RequeteInvalideException("NOMBRE_SEANCES", "Entre 2 et " + max + " séances.", "nombreSeances");
+            }
         }
         Instant maintenant = Instant.now(horloge);
         List<SeanceApercu> seances = new ArrayList<>();
-        for (Instant debut : dates(premiere, frequence, nombre)) {
+        for (Instant debut : dates(premiere, regle)) {
             var creneau = creneaux.commencantA(terrain, debut);
             if (creneau.isEmpty()) {
                 seances.add(new SeanceApercu(debut, null, 0, false, "Hors des horaires"));
@@ -161,7 +188,8 @@ public class GestionAbonnements {
                 .filter(t -> t.isActif() && t.getSport().isActif())
                 .orElseThrow(() -> new RequeteInvalideException("TERRAIN_INDISPONIBLE",
                         "Ce terrain n'est pas réservable.", "terrainId"));
-        Apercu apercu = calculer(terrain, s.premiereSeance(), s.frequence(), s.nombreSeances());
+        Regle regle = new Regle(s.frequence(), s.nombreSeances(), s.jours(), s.dates());
+        Apercu apercu = calculer(terrain, s.premiereSeance(), regle);
         if (apercu.disponibles() == 0) {
             throw new ConflitException("AUCUNE_SEANCE_LIBRE", "Aucune de ces séances n'est libre.");
         }
@@ -170,7 +198,10 @@ public class GestionAbonnements {
         }
         String par = UtilisateurCourant.identifiant().orElse(null);
         Abonnement a = abonnements.save(new Abonnement(terrain, s.clientNom().trim(), telephone, s.frequence(),
-                s.premiereSeance(), s.nombreSeances(), s.reglement(), s.remise(), par));
+                s.premiereSeance(), apercu.seances().size(), s.reglement(), s.remise(), par));
+        if (s.frequence() == Frequence.HEBDOMADAIRE) {
+            a.definirJours(s.jours());
+        }
 
         boolean leJourJ = s.reglement() == ModeReglement.SEANCE;
         MoyenPaiement moyen = leJourJ ? MoyenPaiement.ESPECES : s.moyenPaiement();
@@ -267,7 +298,7 @@ public class GestionAbonnements {
                     a.getResilieLe(), a.getCreeLe(), total, jouees, aVenir.size(), aEncaisser.size(),
                     aEncaisser.stream().mapToLong(Reservation::getMontant).sum(),
                     aVenir.isEmpty() ? null : aVenir.get(0).getDebut(),
-                    seances.stream().map(ReservationVue::pourPersonnel).toList());
+                    seances.stream().map(ReservationVue::pourPersonnel).toList(), a.getJours());
         }).toList();
     }
 

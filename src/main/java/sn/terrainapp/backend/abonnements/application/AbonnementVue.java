@@ -17,5 +17,5 @@ public record AbonnementVue(long id, long terrainId, String terrain, String spor
                             ModeReglement reglement, long remise, StatutAbonnement statut, Instant resilieLe,
                             Instant creeLe, long montantTotal, int seancesJouees, int seancesAVenir,
                             int seancesAEncaisser, long resteAEncaisser, Instant prochaineSeance,
-                            List<ReservationVue> seances) {
+                            List<ReservationVue> seances, List<Integer> jours) {
 }
