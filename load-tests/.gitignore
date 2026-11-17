@@ -1,0 +1,4 @@
+# Secrets generes par lancer.ps1 / lancer.sh, et rapports de chaque passage.
+.env.charge
+resultats/*
+!resultats/.gitkeep
