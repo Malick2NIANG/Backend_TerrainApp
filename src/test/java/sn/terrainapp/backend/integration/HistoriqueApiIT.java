@@ -35,7 +35,8 @@ class HistoriqueApiIT extends IntegrationTest {
                         {"terrainId":%d,"debut":"%s","clientNom":"%s","clientTelephone":"77 400 00 0%d","moyenPaiement":"%s"}
                         """.formatted(terrain, debut, nom, heure % 10, moyen))).build());
         assertThat(r.statut()).as(r.corps()).isEqualTo(201);
-        return r.json();
+        // Reponse du comptoir : { reservation, jetonSuivi, paiement }.
+        return r.json().get("reservation");
     }
 
     @Test
