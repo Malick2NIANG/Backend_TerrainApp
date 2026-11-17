@@ -88,6 +88,10 @@ public class Terrain {
     @Column(nullable = false)
     private boolean actif = true;
 
+    /** Retire du complexe (hors planning) ; restaurable. */
+    @Column(nullable = false)
+    private boolean archive;
+
     @Column(nullable = false)
     private int ordre;
 
@@ -136,9 +140,20 @@ public class Terrain {
         }
         this.dureeCreneauMinutes = dureeCreneauMinutes;
         this.tarifHeure = tarifHeure;
-        this.actif = actif;
+        this.actif = actif && !archive;
         this.ordre = ordre;
     }
+
+    public void changerStatut(StatutTerrain statut) {
+        this.archive = statut == StatutTerrain.ARCHIVE;
+        this.actif = statut == StatutTerrain.ACTIF;
+    }
+
+    public StatutTerrain getStatut() {
+        return archive ? StatutTerrain.ARCHIVE : actif ? StatutTerrain.ACTIF : StatutTerrain.BROUILLON;
+    }
+
+    public boolean isArchive() { return archive; }
 
     public void placer(Double latitude, Double longitude) {
         boolean complet = latitude != null && longitude != null;

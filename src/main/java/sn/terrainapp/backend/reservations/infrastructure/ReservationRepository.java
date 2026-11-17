@@ -59,4 +59,7 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
 
     /** Seances d'un ou plusieurs abonnements, dans l'ordre. */
     List<Reservation> findByAbonnementIdInOrderByDebut(Collection<Long> abonnements);
+
+    /** Reservations a venir sur un terrain (archivage impossible tant qu'il y en a). */
+    long countByTerrainIdAndStatutInAndDebutAfter(Long terrainId, Collection<StatutReservation> statuts, Instant apres);
 }

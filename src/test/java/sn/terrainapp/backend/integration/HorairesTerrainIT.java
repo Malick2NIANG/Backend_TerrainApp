@@ -45,4 +45,33 @@ class HorairesTerrainIT extends IntegrationTest {
                 """.formatted(sport), gerant);
         assertThat(incomplet.json().get("code").asString()).isEqualTo("HORAIRES_INCOMPLETS");
     }
+
+    @Test
+    void publierDepublierArchiverRestaurer() {
+        String gerant = jeton("GERANT");
+        long sport = envoyer("POST", "/sports", "{\"nom\":\"" + unique("Sport") + "\",\"ordre\":1}", gerant).json().get("id").asLong();
+        Reponse t = envoyer("POST", "/terrains", """
+                {"sportId":%d,"nom":"%s","capacite":4,"dureeCreneauMinutes":60,"tarifHeure":10000,"ordre":1}
+                """.formatted(sport, unique("Terrain")), gerant);
+        long id = t.json().get("id").asLong();
+        assertThat(t.json().get("statut").asString()).isEqualTo("ACTIF");
+
+        // Une reservation a venir empeche l'archivage, pas la depublication.
+        String debut = java.time.LocalDateTime.of(LocalDate.now(Horloge.DAKAR).plusDays(2), java.time.LocalTime.of(10, 0))
+                .atZone(Horloge.DAKAR).toInstant().toString();
+        Reponse r = executer(java.net.http.HttpRequest.newBuilder(url("/reservations"))
+                .header("Content-Type", "application/json").header("Idempotency-Key", java.util.UUID.randomUUID().toString())
+                .POST(java.net.http.HttpRequest.BodyPublishers.ofString("""
+                        {"terrainId":%d,"debut":"%s","clientNom":"X","clientTelephone":"77 600 00 01","moyenPaiement":"wave"}
+                        """.formatted(id, debut))).build());
+        assertThat(r.statut()).as(r.corps()).isEqualTo(201);
+        assertThat(envoyer("PATCH", "/terrains/" + id + "/statut", "{\"statut\":\"ARCHIVE\"}", gerant)
+                .json().get("code").asString()).isEqualTo("TERRAIN_RESERVE");
+        Reponse brouillon = envoyer("PATCH", "/terrains/" + id + "/statut", "{\"statut\":\"BROUILLON\"}", gerant);
+        assertThat(brouillon.json().get("statut").asString()).isEqualTo("BROUILLON");
+        assertThat(get("/terrains/" + id, null).statut()).isEqualTo(404);
+        assertThat(envoyer("PATCH", "/terrains/" + id + "/statut", "{\"statut\":\"ACTIF\"}", gerant)
+                .json().get("statut").asString()).isEqualTo("ACTIF");
+        assertThat(envoyer("PATCH", "/terrains/" + id + "/statut", "{\"statut\":\"ACTIF\"}", jeton("ACCUEIL")).statut()).isEqualTo(403);
+    }
 }

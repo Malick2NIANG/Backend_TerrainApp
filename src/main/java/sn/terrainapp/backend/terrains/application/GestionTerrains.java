@@ -89,17 +89,21 @@ public class GestionTerrains {
     private final TerrainRepository terrains;
     private final HoraireOuvertureRepository horaires;
     private final BlocageRepository blocages;
+    private final sn.terrainapp.backend.reservations.infrastructure.ReservationRepository reservations;
     private final JournalActions journal;
     private final org.springframework.context.ApplicationEventPublisher evenements;
     private final Clock horloge;
 
     public GestionTerrains(SportRepository sports, TerrainRepository terrains, HoraireOuvertureRepository horaires,
-                           BlocageRepository blocages, JournalActions journal,
+                           BlocageRepository blocages,
+                           sn.terrainapp.backend.reservations.infrastructure.ReservationRepository reservations,
+                           JournalActions journal,
                            org.springframework.context.ApplicationEventPublisher evenements, Clock horloge) {
         this.sports = sports;
         this.terrains = terrains;
         this.horaires = horaires;
         this.blocages = blocages;
+        this.reservations = reservations;
         this.journal = journal;
         this.evenements = evenements;
         this.horloge = horloge;
@@ -154,6 +158,31 @@ public class GestionTerrains {
         Terrain t = terrains.findById(id).orElseThrow(() -> new RessourceIntrouvableException("Terrain introuvable."));
         appliquer(t, s);
         journal.enregistrer(Domaine.TERRAIN, "MODIFICATION", String.valueOf(id), "a modifié le terrain " + guillemets(t.getNom()));
+        publier();
+        return TerrainVue.de(t);
+    }
+
+    /**
+     * Publier, depublier (brouillon), archiver, restaurer. Archiver : pas de
+     * reservation a venir (sinon les annuler d'abord).
+     */
+    public TerrainVue changerStatut(long id, sn.terrainapp.backend.terrains.domaine.StatutTerrain statut) {
+        Terrain t = terrains.findById(id).orElseThrow(() -> new RessourceIntrouvableException("Terrain introuvable."));
+        if (statut == null) {
+            throw new RequeteInvalideException("STATUT_REQUIS", "Statut attendu : ACTIF, BROUILLON ou ARCHIVE.", "statut");
+        }
+        if (statut == sn.terrainapp.backend.terrains.domaine.StatutTerrain.ARCHIVE) {
+            long aVenir = reservations.countByTerrainIdAndStatutInAndDebutAfter(id, java.util.EnumSet.of(
+                    sn.terrainapp.backend.reservations.domaine.StatutReservation.EN_ATTENTE_PAIEMENT,
+                    sn.terrainapp.backend.reservations.domaine.StatutReservation.CONFIRMEE), java.time.Instant.now(horloge));
+            if (aVenir > 0) {
+                throw new ConflitException("TERRAIN_RESERVE", aVenir + " réservation(s) à venir sur ce terrain : "
+                        + "annulez-les ou dépubliez-le plutôt (brouillon).");
+            }
+        }
+        t.changerStatut(statut);
+        journal.enregistrer(Domaine.TERRAIN, "STATUT", String.valueOf(id), "a passé le terrain " + guillemets(t.getNom())
+                + " en " + statut.name().toLowerCase());
         publier();
         return TerrainVue.de(t);
     }

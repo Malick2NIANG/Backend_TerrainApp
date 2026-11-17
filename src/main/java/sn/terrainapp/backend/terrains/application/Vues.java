@@ -38,7 +38,7 @@ public final class Vues {
                              Double latitude, Double longitude, String surface, int capacite, List<String> equipements, String photoUrl,
                              List<String> photos, int dureeCreneauMinutes,
                              long tarifHeure, List<PlageVue> plages, boolean actif, int ordre, long version,
-                             Double noteMoyenne, long nombreAvis, List<HoraireVue> horaires) {
+                             Double noteMoyenne, long nombreAvis, List<HoraireVue> horaires, String statut) {
         public static TerrainVue de(Terrain t) {
             return de(t, null, 0);
         }
@@ -48,7 +48,8 @@ public final class Vues {
                     t.getLocalite(), t.getLatitude(), t.getLongitude(), t.getSurface(), t.getCapacite(), t.listeEquipements(), t.getPhotoUrl(),
                     List.copyOf(t.getPhotos()), t.getDureeCreneauMinutes(),
                     t.getTarifHeure(), t.getPlages().stream().map(PlageVue::de).toList(), t.isActif(), t.getOrdre(),
-                    t.getVersion(), noteMoyenne, nombreAvis, t.getHoraires().stream().map(HoraireVue::de).toList());
+                    t.getVersion(), noteMoyenne, nombreAvis, t.getHoraires().stream().map(HoraireVue::de).toList(),
+                    t.getStatut().name());
         }
     }
 

@@ -121,7 +121,7 @@ public class Catalogue {
             throw new RequeteInvalideException("DATE_HORS_PERIODE",
                     "Choisissez une date entre aujourd'hui et dans " + JOURS_RESERVABLES + " jours.", "date");
         }
-        List<Terrain> liste = (personnel ? terrains.tous() : terrains.visibles()).stream()
+        List<Terrain> liste = (personnel ? terrains.tous().stream().filter(t -> !t.isArchive()).toList() : terrains.visibles()).stream()
                 .filter(t -> terrainId == null || t.getId().equals(terrainId)).toList();
         if (terrainId != null && liste.isEmpty()) {
             throw new RessourceIntrouvableException("Terrain introuvable.");
