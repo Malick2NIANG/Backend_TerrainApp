@@ -40,6 +40,13 @@ New-Item -ItemType Directory -Force -Path resultats | Out-Null
 $echecs = 0
 foreach ($s in $scenarios) {
   if (-not (Test-Path "$s.js")) { throw "Scenario inconnu : $s.js" }
+  try { Invoke-WebRequest -UseBasicParsing -TimeoutSec 5 'http://localhost:8091/api/v1/health' | Out-Null }
+  catch {
+    Write-Host "Le backend de charge ne repond pas sur le port 8091 (arret ou plantage)." -ForegroundColor Red
+    Write-Host "  docker compose -p terrainapp-charge ps -a"
+    Write-Host "  docker compose -p terrainapp-charge logs --tail 80 backend"
+    exit 1
+  }
   $horodatage = Get-Date -Format 'yyyyMMdd-HHmmss'
   Write-Host "=== $s ==="
   docker run --rm -i --add-host host.docker.internal:host-gateway `

@@ -30,6 +30,10 @@ mkdir -p resultats
 echecs=0
 for s in "${scenarios[@]}"; do
   [ -f "$s.js" ] || { echo "Scenario inconnu : $s.js" >&2; exit 2; }
+  curl -fsS -m 5 http://localhost:8091/api/v1/health >/dev/null 2>&1 || {
+    echo "Le backend de charge ne repond pas sur le port 8091 (arret ou plantage)." >&2
+    echo "  docker compose -p terrainapp-charge ps -a ; docker compose -p terrainapp-charge logs --tail 80 backend" >&2
+    exit 1; }
   horodatage="$(date +%Y%m%d-%H%M%S)"
   echo "=== $s ==="
   MSYS_NO_PATHCONV=1 docker run --rm -i --add-host host.docker.internal:host-gateway \
