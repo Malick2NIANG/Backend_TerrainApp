@@ -13,7 +13,7 @@ import sn.terrainapp.backend.abonnements.domaine.Abonnement;
 
 public interface AbonnementRepository extends JpaRepository<Abonnement, Long> {
 
-    List<Abonnement> findAllByOrderByStatutAscCreeLeDesc();
+    List<Abonnement> findByStatutNotOrderByStatutAscCreeLeDesc(sn.terrainapp.backend.abonnements.domaine.StatutAbonnement statut);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select a from Abonnement a where a.id = :id")

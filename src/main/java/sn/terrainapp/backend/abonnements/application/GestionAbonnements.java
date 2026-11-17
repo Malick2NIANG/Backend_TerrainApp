@@ -137,6 +137,11 @@ public class GestionAbonnements {
         return calculer(terrain, premiere, regle);
     }
 
+    /** Prolongation : une seule seance de plus suffit. */
+    private Apercu calculerSansMinimum(Terrain terrain, Instant premiere, Regle regle) {
+        return evaluer(terrain, premiere, regle);
+    }
+
     private Apercu calculer(Terrain terrain, Instant premiere, Regle regle) {
         if (regle.frequence() == null) {
             throw new RequeteInvalideException("FREQUENCE_REQUISE", "Choisissez une fréquence.", "frequence");
@@ -152,6 +157,10 @@ public class GestionAbonnements {
                 throw new RequeteInvalideException("NOMBRE_SEANCES", "Entre 2 et " + max + " séances.", "nombreSeances");
             }
         }
+        return evaluer(terrain, premiere, regle);
+    }
+
+    private Apercu evaluer(Terrain terrain, Instant premiere, Regle regle) {
         Instant maintenant = Instant.now(horloge);
         List<SeanceApercu> seances = new ArrayList<>();
         for (Instant debut : dates(premiere, regle)) {
@@ -204,22 +213,7 @@ public class GestionAbonnements {
         }
 
         boolean leJourJ = s.reglement() == ModeReglement.SEANCE;
-        MoyenPaiement moyen = leJourJ ? MoyenPaiement.ESPECES : s.moyenPaiement();
-        List<SeanceApercu> libres = apercu.seances().stream().filter(SeanceApercu::disponible).toList();
-        long remiseRestante = s.remise();
-        for (int i = 0; i < libres.size(); i++) {
-            SeanceApercu seance = libres.get(i);
-            long part = i == libres.size() - 1 ? remiseRestante : s.remise() * seance.prix() / apercu.total();
-            remiseRestante -= part;
-            Reservation r = new Reservation(nouvelleReference(), terrain, seance.debut(), seance.fin(),
-                    seance.prix() - part, Canal.COMPTOIR, moyen, a.getClientNom(), telephone, null,
-                    JetonSuivi.codeTicket(), par);
-            r.rattacherAbonnement(a.getId(), leJourJ);
-            reservations.save(r);
-            if (!leJourJ) {
-                paiements.encaisserAuComptoir(r);
-            }
-        }
+        List<SeanceApercu> libres = creerSeances(a, terrain, apercu, s.moyenPaiement(), s.remise(), par);
         publication.publishEvent(new ChangementPublic(ChangementPublic.Sujet.DISPONIBILITES));
         journal.enregistrer(Domaine.RESERVATION, "ABONNEMENT", String.valueOf(a.getId()), "a créé l'abonnement de "
                 + a.getClientNom() + " sur " + terrain.getNom() + " (" + libres.size() + " séances, "
@@ -227,9 +221,151 @@ public class GestionAbonnements {
         return vues(List.of(a)).get(0);
     }
 
+    /** Seances libres de l'apercu -> reservations confirmees (payees d'avance, ou a encaisser le jour J). */
+    private List<SeanceApercu> creerSeances(Abonnement a, Terrain terrain, Apercu apercu, MoyenPaiement moyenAvance,
+                                            long remise, String par) {
+        boolean leJourJ = a.getReglement() == ModeReglement.SEANCE;
+        MoyenPaiement moyen = leJourJ ? MoyenPaiement.ESPECES : moyenAvance;
+        List<SeanceApercu> libres = apercu.seances().stream().filter(SeanceApercu::disponible).toList();
+        long remiseRestante = remise;
+        for (int i = 0; i < libres.size(); i++) {
+            SeanceApercu seance = libres.get(i);
+            long part = i == libres.size() - 1 ? remiseRestante : remise * seance.prix() / apercu.total();
+            remiseRestante -= part;
+            Reservation r = new Reservation(nouvelleReference(), terrain, seance.debut(), seance.fin(),
+                    seance.prix() - part, Canal.COMPTOIR, moyen, a.getClientNom(), a.getClientTelephone(), null,
+                    JetonSuivi.codeTicket(), par);
+            r.rattacherAbonnement(a.getId(), leJourJ);
+            reservations.save(r);
+            if (!leJourJ) {
+                paiements.encaisserAuComptoir(r);
+            }
+        }
+        return libres;
+    }
+
+    /** Correction du client : l'abonnement et ses seances a venir. */
+    @Transactional
+    public AbonnementVue modifierClient(long id, String nom, String saisieTelephone) {
+        Abonnement a = actif(id);
+        String telephone = Telephone.normaliser(saisieTelephone).orElseThrow(() -> new RequeteInvalideException(
+                "TELEPHONE_INVALIDE", "Indiquez un numéro sénégalais à 9 chiffres.", "clientTelephone"));
+        if (nom == null || nom.trim().length() < 2 || nom.trim().length() > 80) {
+            throw new RequeteInvalideException("NOM_REQUIS", "Indiquez le nom du client.", "clientNom");
+        }
+        a.changerClient(nom.trim(), telephone);
+        Instant maintenant = Instant.now(horloge);
+        for (Reservation r : reservations.findByAbonnementIdInOrderByDebut(List.of(id))) {
+            if (r.getDebut().isAfter(maintenant) && r.getStatut() == StatutReservation.CONFIRMEE) {
+                r.changerClient(a.getClientNom(), telephone);
+            }
+        }
+        journal.enregistrer(Domaine.RESERVATION, "ABONNEMENT_MODIFIE", String.valueOf(id), "a modifié le client de l'abonnement "
+                + a.getClientNom());
+        return vues(List.of(a)).get(0);
+    }
+
+    /**
+     * Prolonger : n seances de plus, a la suite de la derniere (meme regle,
+     * meme heure, meme terrain). Dates au choix : les nouvelles dates.
+     */
+    @Transactional
+    public AbonnementVue prolonger(long id, int nombre, List<LocalDate> nouvellesDates, MoyenPaiement moyen) {
+        Abonnement a = actif(id);
+        if (a.getReglement() == ModeReglement.AVANCE && moyen == null) {
+            throw new RequeteInvalideException("MOYEN_PAIEMENT_REQUIS", "Indiquez comment le client a payé.", "moyenPaiement");
+        }
+        Terrain terrain = terrains.verrouiller(a.getTerrain().getId())
+                .orElseThrow(() -> new RequeteInvalideException("TERRAIN_INDISPONIBLE", "Terrain introuvable.", "terrainId"));
+        List<Reservation> seances = reservations.findByAbonnementIdInOrderByDebut(List.of(id));
+        ZonedDateTime derniere = (seances.isEmpty() ? a.getPremiereSeance() : seances.get(seances.size() - 1).getDebut())
+                .atZone(Horloge.DAKAR);
+        Instant suivante;
+        Regle regle;
+        if (a.getFrequence() == Frequence.PERSONNALISEE) {
+            if (nouvellesDates == null || nouvellesDates.isEmpty()) {
+                throw new RequeteInvalideException("DATES_REQUISES", "Choisissez au moins une date.", "dates");
+            }
+            List<LocalDate> triees = nouvellesDates.stream().distinct().sorted().toList();
+            suivante = ZonedDateTime.of(triees.get(0), derniere.toLocalTime(), Horloge.DAKAR).toInstant();
+            regle = new Regle(Frequence.PERSONNALISEE, triees.size(), null, triees);
+        } else {
+            if (nombre < 1 || nombre > MAX_HEBDO) {
+                throw new RequeteInvalideException("NOMBRE_SEANCES", "Entre 1 et " + MAX_HEBDO + " séances.", "nombreSeances");
+            }
+            java.util.Set<Integer> jours = a.getJours().isEmpty()
+                    ? java.util.Set.of(a.getPremiereSeance().atZone(Horloge.DAKAR).getDayOfWeek().getValue())
+                    : java.util.Set.copyOf(a.getJours());
+            if (a.getFrequence() == Frequence.HEBDOMADAIRE) {
+                LocalDate d = derniere.toLocalDate().plusDays(1);
+                while (!jours.contains(d.getDayOfWeek().getValue())) {
+                    d = d.plusDays(1);
+                }
+                suivante = ZonedDateTime.of(d, derniere.toLocalTime(), Horloge.DAKAR).toInstant();
+            } else {
+                // Meme rang du jour que la 1re seance, le mois suivant la derniere.
+                ZonedDateTime p = a.getPremiereSeance().atZone(Horloge.DAKAR);
+                int rang = (p.getDayOfMonth() - 1) / 7 + 1;
+                YearMonth mois = YearMonth.from(derniere).plusMonths(1);
+                LocalDate d = rang >= 5 ? mois.atEndOfMonth().with(TemporalAdjusters.previousOrSame(p.getDayOfWeek()))
+                        : mois.atDay(1).with(TemporalAdjusters.dayOfWeekInMonth(rang, p.getDayOfWeek()));
+                suivante = ZonedDateTime.of(d, p.toLocalTime(), Horloge.DAKAR).toInstant();
+            }
+            regle = new Regle(a.getFrequence(), nombre, jours, null);
+        }
+        Apercu apercu = calculerSansMinimum(terrain, suivante, regle);
+        if (apercu.disponibles() == 0) {
+            throw new ConflitException("AUCUNE_SEANCE_LIBRE", "Aucune de ces séances n'est libre.");
+        }
+        String par = UtilisateurCourant.identifiant().orElse(null);
+        List<SeanceApercu> libres = creerSeances(a, terrain, apercu, moyen, 0, par);
+        a.ajouterSeances(apercu.seances().size());
+        publication.publishEvent(new ChangementPublic(ChangementPublic.Sujet.DISPONIBILITES));
+        journal.enregistrer(Domaine.RESERVATION, "ABONNEMENT_PROLONGE", String.valueOf(id), "a prolongé l'abonnement de "
+                + a.getClientNom() + " (" + libres.size() + " séance(s), " + fcfa(apercu.total()) + ")");
+        return vues(List.of(a)).get(0);
+    }
+
+    /**
+     * Supprimer un abonnement cree par erreur : seulement si aucune seance n'a
+     * ete jouee ni payee. Ses seances sont annulees, il disparait de la liste.
+     */
+    @Transactional
+    public void supprimer(long id) {
+        Abonnement a = abonnements.verrouiller(id)
+                .orElseThrow(() -> new RessourceIntrouvableException("Abonnement introuvable."));
+        Instant maintenant = Instant.now(horloge);
+        List<Reservation> seances = reservations.findByAbonnementIdInOrderByDebut(List.of(id));
+        boolean entame = seances.stream().anyMatch(r -> r.getStatut() != StatutReservation.ANNULEE
+                && (r.getPayeeLe() != null || !r.getDebut().isAfter(maintenant)));
+        if (entame) {
+            throw new ConflitException("ABONNEMENT_ENTAME",
+                    "Des séances sont payées ou déjà passées : résiliez l'abonnement plutôt que de le supprimer.");
+        }
+        String par = UtilisateurCourant.identifiant().orElse("systeme");
+        for (Reservation r : seances) {
+            if (r.getStatut() == StatutReservation.CONFIRMEE) {
+                r.annuler(par, maintenant, "Abonnement supprimé");
+            }
+        }
+        a.supprimer(maintenant);
+        publication.publishEvent(new ChangementPublic(ChangementPublic.Sujet.DISPONIBILITES));
+        journal.enregistrer(Domaine.RESERVATION, "ABONNEMENT_SUPPRIME", String.valueOf(id), "a supprimé l'abonnement de "
+                + a.getClientNom() + " (créé par erreur)");
+    }
+
+    private Abonnement actif(long id) {
+        Abonnement a = abonnements.verrouiller(id)
+                .orElseThrow(() -> new RessourceIntrouvableException("Abonnement introuvable."));
+        if (a.getStatut() != sn.terrainapp.backend.abonnements.domaine.StatutAbonnement.ACTIF) {
+            throw new ConflitException("ABONNEMENT_TERMINE", "Cet abonnement n'est plus actif.");
+        }
+        return a;
+    }
+
     @Transactional(readOnly = true)
     public List<AbonnementVue> tous() {
-        return vues(abonnements.findAllByOrderByStatutAscCreeLeDesc());
+        return vues(abonnements.findByStatutNotOrderByStatutAscCreeLeDesc(sn.terrainapp.backend.abonnements.domaine.StatutAbonnement.SUPPRIME));
     }
 
     @Transactional(readOnly = true)

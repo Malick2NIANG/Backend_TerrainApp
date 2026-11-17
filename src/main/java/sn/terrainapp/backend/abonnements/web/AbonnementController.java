@@ -70,6 +70,31 @@ public class AbonnementController {
         return gestion.resilier(id);
     }
 
+    public record DemandeClient(String clientNom, String clientTelephone) {
+    }
+
+    @org.springframework.web.bind.annotation.PutMapping("/abonnements/{id}/client")
+    @Operation(summary = "Corriger le nom ou le numero du client (seances a venir comprises)")
+    public AbonnementVue modifierClient(@PathVariable long id, @RequestBody DemandeClient d) {
+        return gestion.modifierClient(id, d.clientNom(), d.clientTelephone());
+    }
+
+    public record DemandeProlongation(int nombreSeances, java.util.List<java.time.LocalDate> dates, MoyenPaiement moyenPaiement) {
+    }
+
+    @PostMapping("/abonnements/{id}/prolongation")
+    @Operation(summary = "Ajouter des seances a la suite (meme regle) ; dates au choix : les nouvelles dates")
+    public AbonnementVue prolonger(@PathVariable long id, @RequestBody DemandeProlongation d) {
+        return gestion.prolonger(id, d.nombreSeances(), d.dates(), d.moyenPaiement());
+    }
+
+    @org.springframework.web.bind.annotation.DeleteMapping("/abonnements/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(summary = "Supprimer un abonnement cree par erreur (rien de joue ni de paye)")
+    public void supprimer(@PathVariable long id) {
+        gestion.supprimer(id);
+    }
+
     public record DemandeEncaissement(@NotNull MoyenPaiement moyenPaiement, Long especesRecues) {
     }
 

@@ -144,4 +144,34 @@ class AbonnementsApiIT extends IntegrationTest {
         assertThat(cree.json().get("seances")).hasSize(3);
         assertThat(cree.json().get("frequence").asString()).isEqualTo("PERSONNALISEE");
     }
+
+    @Test
+    void modifierProlongerSupprimer() {
+        long t = creerTerrain();
+        String accueil = jeton("ACCUEIL");
+        Reponse cree = envoyer("POST", "/abonnements", """
+                {"terrainId":%d,"premiereSeance":"%s","frequence":"HEBDOMADAIRE","nombreSeances":2,
+                 "clientNom":"Equipe A","clientTelephone":"77 555 00 11","reglement":"SEANCE","remise":0}
+                """.formatted(t, a(dans(4), 9)), accueil);
+        long id = cree.json().get("id").asLong();
+
+        Reponse client = envoyer("PUT", "/abonnements/" + id + "/client",
+                "{\"clientNom\":\"Equipe Alpha\",\"clientTelephone\":\"78 555 00 11\"}", accueil);
+        assertThat(client.statut()).as(client.corps()).isEqualTo(200);
+        assertThat(client.json().get("seances").get(0).get("clientNom").asString()).isEqualTo("Equipe Alpha");
+
+        Reponse plus = envoyer("POST", "/abonnements/" + id + "/prolongation", "{\"nombreSeances\":2}", accueil);
+        assertThat(plus.statut()).as(plus.corps()).isEqualTo(200);
+        assertThat(plus.json().get("seances")).hasSize(4);
+        Instant derniere = Instant.parse(plus.json().get("seances").get(3).get("debut").asString());
+        assertThat(derniere).isEqualTo(a(dans(4).plusWeeks(3), 9));
+
+        // Rien de joue ni de paye : suppression possible, l'abonnement disparait.
+        assertThat(envoyer("DELETE", "/abonnements/" + id, null, accueil).statut()).isEqualTo(204);
+        boolean present = false;
+        for (JsonNode x : get("/abonnements", accueil).json()) {
+            present |= x.get("id").asLong() == id;
+        }
+        assertThat(present).isFalse();
+    }
 }

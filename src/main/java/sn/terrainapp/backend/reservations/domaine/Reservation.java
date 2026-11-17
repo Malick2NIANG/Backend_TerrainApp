@@ -150,6 +150,12 @@ public class Reservation {
         this.aEncaisser = encaisserLeJourJ;
     }
 
+    /** Correction du nom ou du numero du client (abonnement modifie). */
+    public void changerClient(String nom, String telephone) {
+        this.clientNom = nom;
+        this.clientTelephone = telephone;
+    }
+
     /** Especes recues pour ce montant : la monnaie rendue est calculee. */
     public void noterEspeces(Long recues) {
         if (recues == null || moyenPaiement != MoyenPaiement.ESPECES) {

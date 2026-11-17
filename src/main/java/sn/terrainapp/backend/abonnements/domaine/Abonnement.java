@@ -117,6 +117,21 @@ public class Abonnement {
         creeLe = Instant.now();
     }
 
+    public void changerClient(String nom, String telephone) {
+        this.clientNom = nom;
+        this.clientTelephone = telephone;
+    }
+
+    public void ajouterSeances(int nombre) {
+        this.nombreSeances += nombre;
+    }
+
+    /** Cree par erreur (rien de joue ni de paye) : retire de la liste. */
+    public void supprimer(Instant quand) {
+        statut = StatutAbonnement.SUPPRIME;
+        resilieLe = quand;
+    }
+
     public void resilier(Instant quand) {
         if (statut != StatutAbonnement.ACTIF) {
             throw new ReservationInterditeException("DEJA_RESILIE", "Cet abonnement est déjà résilié.");
