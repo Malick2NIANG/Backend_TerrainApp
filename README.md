@@ -10,6 +10,8 @@ SSE pour le temps réel, tests d'intégration avec Testcontainers.
 
 ## Lancer en local
 
+Pour lancer les trois applications ensemble (backend, App Client, Manager) et faire le vrai parcours : [`LANCER-EN-LOCAL.md`](LANCER-EN-LOCAL.md).
+
 ```bash
 cp .env.example .env      # puis remplir les mots de passe
 docker compose up -d --build --wait
