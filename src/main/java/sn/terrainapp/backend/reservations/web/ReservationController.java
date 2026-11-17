@@ -108,7 +108,7 @@ public class ReservationController {
     }
 
     @GetMapping("/planning")
-    @PreAuthorize("hasAnyRole('ACCUEIL', 'GERANT', 'CONTROLEUR')")
+    @PreAuthorize("hasAnyRole('ACCUEIL', 'GERANT', 'CONTROLEUR', 'ADMIN')")
     @Operation(summary = "Reservations d'un jour (toutes, avec statut)")
     public List<ReservationVue> planning(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         return suivi.planning(date);
