@@ -100,6 +100,13 @@ public class ReservationController {
                 .body(retrouver.verifier(demande.telephone(), demande.code()));
     }
 
+    @PostMapping("/reservations/{id}/recu")
+    @PreAuthorize("hasAnyRole('ACCUEIL', 'GERANT')")
+    @Operation(summary = "Reimprimer le recu d'une reservation payee (avec le code du ticket ; journalise)")
+    public ResponseEntity<ReservationVue> recu(@PathVariable long id) {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(suivi.pourRecu(id));
+    }
+
     @GetMapping("/planning")
     @PreAuthorize("hasAnyRole('ACCUEIL', 'GERANT', 'CONTROLEUR')")
     @Operation(summary = "Reservations d'un jour (toutes, avec statut)")

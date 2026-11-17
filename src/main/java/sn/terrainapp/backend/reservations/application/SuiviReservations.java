@@ -101,6 +101,21 @@ public class SuiviReservations {
                 .map(ReservationVue::pourPersonnel).toList();
     }
 
+    /**
+     * Reimpression du recu au comptoir (client qui a perdu son ticket) : le
+     * code du ticket est rendu pour le QR, et la reimpression est journalisee.
+     */
+    @Transactional
+    public ReservationVue pourRecu(long id) {
+        Reservation r = reservations.findById(id)
+                .orElseThrow(() -> new RessourceIntrouvableException("Réservation introuvable."));
+        if (r.getPayeeLe() == null || (r.getStatut() != StatutReservation.CONFIRMEE && r.getStatut() != StatutReservation.HONOREE)) {
+            throw new ConflitException("RECU_INDISPONIBLE", "Pas de reçu : la réservation n'est pas payée.");
+        }
+        journal.enregistrer(Domaine.RESERVATION, "RECU", r.getReference(), "a imprimé le reçu de la réservation " + r.getReference());
+        return ReservationVue.pourClient(r);
+    }
+
     @Transactional(readOnly = true)
     public ReservationVue pourPersonnel(long id) {
         return reservations.findById(id).map(ReservationVue::pourPersonnel)

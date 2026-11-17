@@ -333,6 +333,12 @@ class ReservationsApiIT extends IntegrationTest {
         assertThat(ok.statut()).as(ok.corps()).isEqualTo(201);
         assertThat(ok.json().get("reservation").get("especesRecues").asLong()).isEqualTo(15000);
         assertThat(ok.json().get("reservation").get("monnaieRendue").asLong()).isEqualTo(5000);
+        // Reimpression du recu : code du ticket rendu au personnel du comptoir, pas au controleur.
+        long id = ok.json().get("reservation").get("id").asLong();
+        assertThat(envoyer("POST", "/reservations/" + id + "/recu", null, jeton("CONTROLEUR")).statut()).isEqualTo(403);
+        Reponse recu = envoyer("POST", "/reservations/" + id + "/recu", null, jeton("ACCUEIL"));
+        assertThat(recu.json().get("codeTicket").asString()).isNotBlank();
+        assertThat(recu.json().get("especesRecues").asLong()).isEqualTo(15000);
     }
 
     @Test
