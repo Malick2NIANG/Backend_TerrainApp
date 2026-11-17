@@ -98,9 +98,9 @@ public class SecurityConfig {
                                 "/disponibilites", "/photos/*", "/videos/*", "/annonces", "/terrains/*/avis",
                                 "/temps-reel/public").permitAll()
                         .requestMatchers(HttpMethod.POST, "/reservations", "/reservations/retrouver",
-                                "/reservations/pin-oublie", "/reservations/pin-oublie/verifier", "/reservations/*/avis").permitAll()
+                                "/reservations/retrouver/code", "/reservations/*/avis").permitAll()
                         // Suivi sans compte : detail avec jeton de suivi (ou jeton
-                        // d'acces obtenu par code PIN) ; le service applique ces regles.
+                        // d'acces obtenu par code SMS) ; le service applique ces regles.
                         .requestMatchers(HttpMethod.GET, "/reservations/*").permitAll()
                         .requestMatchers(HttpMethod.POST, "/paiements/**").permitAll()
                         // Documentation API (Swagger UI + spec OpenAPI generee par springdoc).

@@ -34,7 +34,7 @@ class AvisApiIT extends IntegrationTest {
         Reponse r = executer(java.net.http.HttpRequest.newBuilder(url("/reservations"))
                 .header("Content-Type", "application/json").header("Idempotency-Key", UUID.randomUUID().toString())
                 .POST(java.net.http.HttpRequest.BodyPublishers.ofString("""
-                        {"terrainId":%d,"debut":"%s","clientNom":"Awa Diop Ndiaye","clientTelephone":"77 222 33 44","moyenPaiement":"wave","pin":"4826"}
+                        {"terrainId":%d,"debut":"%s","clientNom":"Awa Diop Ndiaye","clientTelephone":"77 222 33 44","moyenPaiement":"wave"}
                         """.formatted(terrain, debut))).build());
         assertThat(r.statut()).as(r.corps()).isEqualTo(201);
         long id = r.json().get("reservation").get("id").asLong();

@@ -16,7 +16,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 /**
- * Jeton d'acces a une reservation, remis apres verification du code PIN
+ * Jeton d'acces a une reservation, remis apres verification du code SMS
  * (reservation retrouvee depuis un autre telephone). Signe (HMAC-SHA256),
  * rien a stocker : "A.id.expiration.signature", valable 90 jours. Accepte
  * partout ou le jeton de suivi l'est (detail, ticket, relance du paiement).
@@ -63,7 +63,7 @@ public class JetonsAcces {
         return MessageDigest.isEqual(attendue.getBytes(StandardCharsets.US_ASCII), parties[3].getBytes(StandardCharsets.US_ASCII));
     }
 
-    /** Jeton de suivi d'origine (telephone qui a reserve) OU jeton d'acces par PIN. */
+    /** Jeton de suivi d'origine (telephone qui a reserve) OU jeton d'acces (code SMS). */
     public boolean autorise(long reservationId, String jeton, String empreinteJetonSuivi) {
         return JetonSuivi.correspond(jeton, empreinteJetonSuivi) || valide(reservationId, jeton);
     }

@@ -27,7 +27,7 @@ import sn.terrainapp.backend.reservations.application.ControleTickets.ResultatSc
 import sn.terrainapp.backend.reservations.application.CreationReservation;
 import sn.terrainapp.backend.reservations.application.ReservationVue;
 import sn.terrainapp.backend.reservations.application.SaisieReservation;
-import sn.terrainapp.backend.reservations.application.RecuperationPin;
+import sn.terrainapp.backend.reservations.application.RetrouverParSms;
 import sn.terrainapp.backend.reservations.application.SuiviReservations;
 import sn.terrainapp.backend.reservations.domaine.Canal;
 
@@ -40,11 +40,11 @@ public class ReservationController {
     private final CreationReservation creation;
     private final SuiviReservations suivi;
     private final ControleTickets tickets;
-    private final RecuperationPin recuperation;
+    private final RetrouverParSms retrouver;
 
     public ReservationController(CreationReservation creation, SuiviReservations suivi, ControleTickets tickets,
-                                 RecuperationPin recuperation) {
-        this.recuperation = recuperation;
+                                 RetrouverParSms retrouver) {
+        this.retrouver = retrouver;
         this.creation = creation;
         this.suivi = suivi;
         this.tickets = tickets;
@@ -79,35 +79,25 @@ public class ReservationController {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(vue);
     }
 
-    public record DemandeRecherche(@NotBlank String telephone, @NotBlank String pin) {
-    }
-
     public record DemandeCode(@NotBlank String telephone) {
     }
 
-    public record NouveauPin(@NotBlank String telephone, @NotBlank String code, @NotBlank String nouveauPin) {
+    public record DemandeRecherche(@NotBlank String telephone, @NotBlank String code) {
     }
 
-    @PostMapping("/reservations/pin-oublie")
+    @PostMapping("/reservations/retrouver/code")
     @ResponseStatus(HttpStatus.ACCEPTED)
-    @Operation(summary = "PIN oublie : envoie un code de recuperation par SMS (meme reponse que le numero ait reserve ou non)")
-    public void pinOublie(@Valid @RequestBody DemandeCode demande) {
-        recuperation.demander(demande.telephone());
+    @Operation(summary = "Autre telephone : envoie un code par SMS au numero (meme reponse que le numero ait reserve ou non)")
+    public void codeParSms(@Valid @RequestBody DemandeCode demande) {
+        retrouver.demander(demande.telephone());
     }
 
-    @PostMapping("/reservations/pin-oublie/verifier")
-    @Operation(summary = "Code de recuperation + nouveau PIN : renvoie les reservations retrouvees")
-    public ResponseEntity<List<SuiviReservations.ReservationRetrouvee>> nouveauPin(@Valid @RequestBody NouveauPin demande) {
-        return ResponseEntity.ok().cacheControl(CacheControl.noStore())
-                .body(recuperation.verifier(demande.telephone(), demande.code(), demande.nouveauPin()));
-    }
-
-    /** POST : le code PIN ne doit jamais apparaitre dans une adresse (journaux, historique). */
+    /** POST : le code ne doit jamais apparaitre dans une adresse (journaux, historique). */
     @PostMapping("/reservations/retrouver")
-    @Operation(summary = "Retrouver ses reservations depuis un autre telephone : numero + code PIN (5 essais / 15 min)")
+    @Operation(summary = "Retrouver ses reservations depuis un autre telephone : numero + code recu par SMS")
     public ResponseEntity<List<SuiviReservations.ReservationRetrouvee>> retrouver(@Valid @RequestBody DemandeRecherche demande) {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore())
-                .body(suivi.retrouver(demande.telephone(), demande.pin()));
+                .body(retrouver.verifier(demande.telephone(), demande.code()));
     }
 
     @GetMapping("/planning")

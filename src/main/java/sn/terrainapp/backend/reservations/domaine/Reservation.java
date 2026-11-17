@@ -67,9 +67,13 @@ public class Reservation {
     @Column(name = "code_ticket", nullable = false, length = 40)
     private String codeTicket;
 
-    /** Empreinte BCrypt du code PIN choisi par le client (App) ; null au comptoir. */
-    @Column(name = "pin_empreinte", length = 100)
-    private String pinEmpreinte;
+    /** Abonnement dont cette reservation est une seance (null sinon). */
+    @Column(name = "abonnement_id")
+    private Long abonnementId;
+
+    /** Seance d'abonnement payable le jour J : pas encaissee a la creation. */
+    @jakarta.persistence.Transient
+    private boolean aEncaisser;
 
     /** Date du paiement (recu) : confirmation en ligne, ou creation au comptoir. */
     @Column(name = "payee_le")
@@ -124,13 +128,27 @@ public class Reservation {
     void avantCreation() {
         creeLe = Instant.now();
         modifieLe = creeLe;
-        if (statut == StatutReservation.CONFIRMEE && payeeLe == null) {
+        if (statut == StatutReservation.CONFIRMEE && payeeLe == null && !aEncaisser) {
             payeeLe = creeLe;
         }
     }
 
-    public void definirPin(String empreinte) {
-        this.pinEmpreinte = empreinte;
+    /** Seance d'abonnement : rattachee, et a encaisser le jour J si demande. */
+    public void rattacherAbonnement(long abonnement, boolean encaisserLeJourJ) {
+        this.abonnementId = abonnement;
+        this.aEncaisser = encaisserLeJourJ;
+    }
+
+    /** Encaissement au comptoir d'une seance confirmee non payee. */
+    public void encaisser(MoyenPaiement moyen, Instant quand) {
+        if (payeeLe != null) {
+            throw new ReservationInterditeException("DEJA_PAYEE", "Cette séance est déjà payée.");
+        }
+        if (statut != StatutReservation.CONFIRMEE && statut != StatutReservation.HONOREE) {
+            throw new ReservationInterditeException("STATUT_INCOMPATIBLE", "Cette séance ne peut pas être encaissée.");
+        }
+        this.moyenPaiement = moyen;
+        this.payeeLe = quand;
     }
 
     @PreUpdate
@@ -189,8 +207,8 @@ public class Reservation {
     public String getClientTelephone() { return clientTelephone; }
     public String getJetonSuiviEmpreinte() { return jetonSuiviEmpreinte; }
     public String getCodeTicket() { return codeTicket; }
-    public String getPinEmpreinte() { return pinEmpreinte; }
     public Instant getPayeeLe() { return payeeLe; }
+    public Long getAbonnementId() { return abonnementId; }
     public Instant getScanneLe() { return scanneLe; }
     public Instant getCreeLe() { return creeLe; }
     public long getVersion() { return version; }

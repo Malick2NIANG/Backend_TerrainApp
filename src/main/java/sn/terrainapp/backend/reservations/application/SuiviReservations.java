@@ -16,10 +16,8 @@ import sn.terrainapp.backend.avis.infrastructure.AvisRepository;
 import sn.terrainapp.backend.commun.audit.JournalActions;
 import sn.terrainapp.backend.commun.audit.JournalActions.Domaine;
 import sn.terrainapp.backend.commun.diffusion.ChangementPublic;
-import sn.terrainapp.backend.commun.erreurs.RequeteInvalideException;
 import sn.terrainapp.backend.commun.erreurs.RessourceIntrouvableException;
 import sn.terrainapp.backend.commun.securite.UtilisateurCourant;
-import sn.terrainapp.backend.commun.telephone.Telephone;
 import sn.terrainapp.backend.commun.temps.Horloge;
 import sn.terrainapp.backend.reservations.domaine.Reservation;
 import sn.terrainapp.backend.reservations.domaine.StatutReservation;
@@ -37,19 +35,17 @@ public class SuiviReservations {
     private final JournalActions journal;
     private final Clock horloge;
     private final JetonsAcces jetonsAcces;
-    private final TentativesPin tentatives;
     private final AvisRepository avis;
 
-    /** Reservation retrouvee par code PIN, avec son jeton d'acces (90 jours). */
+    /** Reservation retrouvee par code SMS, avec son jeton d'acces (90 jours). */
     public record ReservationRetrouvee(ReservationVue reservation, String jetonAcces) {
     }
 
     public SuiviReservations(ReservationRepository reservations, EvenementSortantRepository evenements,
                              ApplicationEventPublisher publication, JournalActions journal, Clock horloge,
-                             JetonsAcces jetonsAcces, TentativesPin tentatives, AvisRepository avis) {
+                             JetonsAcces jetonsAcces, AvisRepository avis) {
         this.avis = avis;
         this.jetonsAcces = jetonsAcces;
-        this.tentatives = tentatives;
         this.reservations = reservations;
         this.evenements = evenements;
         this.publication = publication;
@@ -59,7 +55,7 @@ public class SuiviReservations {
 
     /**
      * Joueur : uniquement avec le jeton de suivi, ou le jeton d'acces obtenu
-     * par code PIN (sinon 404, on ne confirme meme pas l'existence).
+     * par code SMS (sinon 404, on ne confirme meme pas l'existence).
      */
     @Transactional(readOnly = true)
     public ReservationVue pourClient(long id, String jeton) {
@@ -69,32 +65,16 @@ public class SuiviReservations {
     }
 
     /**
-     * Joueur sur un autre telephone : numero + code PIN choisi a la
-     * reservation. Seules les reservations protegees par CE code sont
-     * rendues (rien sans le bon code : le numero seul n'expose plus rien).
-     * 5 echecs en 15 min bloquent le numero (TentativesPin).
+     * Reservations d'un numero (60 dernieres), chacune avec un jeton d'acces.
+     * Appele uniquement apres verification du code SMS (RetrouverParSms).
      */
     @Transactional(readOnly = true)
-    public List<ReservationRetrouvee> retrouver(String saisieTelephone, String pin) {
-        String telephone = Telephone.normaliser(saisieTelephone).orElseThrow(() -> new RequeteInvalideException(
-                "TELEPHONE_REQUIS", "Indiquez un numéro sénégalais à 9 chiffres.", "telephone"));
-        if (pin == null || !pin.matches("\\d{4}")) {
-            throw new RequeteInvalideException("PIN_INVALIDE", "Le code PIN fait 4 chiffres.", "pin");
-        }
-        tentatives.verifierAutorise(telephone);
-        List<ReservationRetrouvee> trouvees = reservations
-                .findTop60ByClientTelephoneAndPinEmpreinteIsNotNullOrderByDebutDesc(telephone).stream()
-                .filter(r -> CodesPin.correspond(pin, r.getPinEmpreinte()))
+    public List<ReservationRetrouvee> duNumero(String telephone) {
+        return reservations.findTop60ByClientTelephoneOrderByDebutDesc(telephone).stream()
                 .map(r -> new ReservationRetrouvee(ReservationVue.pourClient(r)
                         .avecAvis(avis.findByReservationId(r.getId()).map(a -> a.getNote()).orElse(null)),
                         jetonsAcces.emettre(r.getId())))
                 .toList();
-        if (trouvees.isEmpty()) {
-            tentatives.echec(telephone);
-        } else {
-            tentatives.reussite(telephone);
-        }
-        return trouvees;
     }
 
     /** Personnel : reservations d'un jour (de 00:00 au lendemain 06:00, pour la nuit). */

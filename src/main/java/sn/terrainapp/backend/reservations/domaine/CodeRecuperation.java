@@ -8,7 +8,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
-/** Code de recuperation du PIN, envoye par SMS : un a la fois par numero. */
+/** Code a usage unique envoye par SMS pour retrouver ses reservations : un a la fois par numero. */
 @Entity
 @Table(name = "codes_recuperation")
 public class CodeRecuperation {

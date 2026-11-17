@@ -52,15 +52,11 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
             + "and r.creeLe < :avant order by r.id")
     List<Long> enAttenteDePaiementAvant(@Param("avant") Instant avant, Pageable page);
 
-    /** Historique sans compte : dernieres reservations d'un numero. */
-    /** Reservations d'un numero protegees par un code PIN (App), les plus recentes d'abord. */
-    List<Reservation> findTop60ByClientTelephoneAndPinEmpreinteIsNotNullOrderByDebutDesc(String telephone);
+    /** Reservations d'un numero (en ligne et au comptoir), les plus recentes d'abord. */
+    List<Reservation> findTop60ByClientTelephoneOrderByDebutDesc(String telephone);
 
-    /**
-     * Reservations d'un numero concernees par le code PIN : en ligne, ou au
-     * comptoir quand le client a choisi un PIN (recuperation par SMS).
-     */
-    @Query("select r from Reservation r where r.clientTelephone = :telephone and "
-            + "(r.canal = sn.terrainapp.backend.reservations.domaine.Canal.APP or r.pinEmpreinte is not null)")
-    List<Reservation> avecCodePin(@Param("telephone") String telephone);
+    boolean existsByClientTelephone(String telephone);
+
+    /** Seances d'un ou plusieurs abonnements, dans l'ordre. */
+    List<Reservation> findByAbonnementIdInOrderByDebut(Collection<Long> abonnements);
 }

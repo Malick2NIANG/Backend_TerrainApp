@@ -120,18 +120,11 @@ public class CreationReservationTransaction {
             throw new ConflitException("CRENEAU_PRIS", "Ce créneau vient d'être réservé. Choisissez-en un autre.");
         }
 
-        if (canal == Canal.APP && (s.pin() == null || s.pin().isBlank())) {
-            throw new RequeteInvalideException("PIN_REQUIS",
-                    "Choisissez un code PIN à 4 chiffres pour retrouver votre réservation.", "pin");
-        }
         String jeton = canal == Canal.APP ? JetonSuivi.generer() : null;
         Reservation r = reservations.save(new Reservation(nouvelleReference(), terrain, creneau.debut(), creneau.fin(),
                 creneau.prix(), canal, s.moyenPaiement(), s.clientNom().trim(), telephone,
                 jeton == null ? null : JetonSuivi.empreinte(jeton), JetonSuivi.codeTicket(),
                 UtilisateurCourant.identifiant().orElse(null)));
-        if (s.pin() != null && !s.pin().isBlank()) {
-            r.definirPin(CodesPin.empreinte(s.pin()));
-        }
 
         Paiement paiement = null;
         if (canal == Canal.APP) {

@@ -67,7 +67,7 @@ public class AvisService {
     }
 
     public AvisVue deposer(long reservationId, String jeton, SaisieAvis s) {
-        // En ligne (jeton de suivi) ou au comptoir avec un code PIN (jeton d'acces).
+        // Jeton de suivi (telephone qui a reserve) ou jeton d'acces (code SMS).
         Reservation r = reservations.findById(reservationId)
                 .filter(x -> jetonsAcces.autorise(reservationId, jeton, x.getJetonSuiviEmpreinte()))
                 .orElseThrow(() -> new RessourceIntrouvableException("Réservation introuvable."));
