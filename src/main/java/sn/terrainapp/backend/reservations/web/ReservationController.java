@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -26,6 +27,7 @@ import sn.terrainapp.backend.reservations.application.ControleTickets.ResultatSc
 import sn.terrainapp.backend.reservations.application.CreationReservation;
 import sn.terrainapp.backend.reservations.application.ReservationVue;
 import sn.terrainapp.backend.reservations.application.SaisieReservation;
+import sn.terrainapp.backend.reservations.application.RetrouverParSms;
 import sn.terrainapp.backend.reservations.application.SuiviReservations;
 import sn.terrainapp.backend.reservations.domaine.Canal;
 
@@ -38,8 +40,11 @@ public class ReservationController {
     private final CreationReservation creation;
     private final SuiviReservations suivi;
     private final ControleTickets tickets;
+    private final RetrouverParSms retrouver;
 
-    public ReservationController(CreationReservation creation, SuiviReservations suivi, ControleTickets tickets) {
+    public ReservationController(CreationReservation creation, SuiviReservations suivi, ControleTickets tickets,
+                                 RetrouverParSms retrouver) {
+        this.retrouver = retrouver;
         this.creation = creation;
         this.suivi = suivi;
         this.tickets = tickets;
@@ -74,10 +79,32 @@ public class ReservationController {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(vue);
     }
 
-    @GetMapping("/reservations")
-    @Operation(summary = "Historique d'un numero (vue reduite, sans ticket) pour un joueur sans compte")
-    public ResponseEntity<List<ReservationVue>> parTelephone(@RequestParam String telephone) {
-        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(suivi.parTelephone(telephone));
+    public record DemandeCode(@NotBlank String telephone) {
+    }
+
+    public record DemandeRecherche(@NotBlank String telephone, @NotBlank String code) {
+    }
+
+    @PostMapping("/reservations/retrouver/code")
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    @Operation(summary = "Autre telephone : envoie un code par SMS au numero (meme reponse que le numero ait reserve ou non)")
+    public void codeParSms(@Valid @RequestBody DemandeCode demande) {
+        retrouver.demander(demande.telephone());
+    }
+
+    /** POST : le code ne doit jamais apparaitre dans une adresse (journaux, historique). */
+    @PostMapping("/reservations/retrouver")
+    @Operation(summary = "Retrouver ses reservations depuis un autre telephone : numero + code recu par SMS")
+    public ResponseEntity<List<SuiviReservations.ReservationRetrouvee>> retrouver(@Valid @RequestBody DemandeRecherche demande) {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore())
+                .body(retrouver.verifier(demande.telephone(), demande.code()));
+    }
+
+    @PostMapping("/reservations/{id}/recu")
+    @PreAuthorize("hasAnyRole('ACCUEIL', 'GERANT')")
+    @Operation(summary = "Reimprimer le recu d'une reservation payee (avec le code du ticket ; journalise)")
+    public ResponseEntity<ReservationVue> recu(@PathVariable long id) {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(suivi.pourRecu(id));
     }
 
     @GetMapping("/planning")
@@ -89,9 +116,12 @@ public class ReservationController {
 
     @PostMapping("/reservations/{id}/annulation")
     @PreAuthorize("hasAnyRole('ACCUEIL', 'GERANT')")
-    @Operation(summary = "Annuler une reservation (le creneau est libere)")
-    public ReservationVue annuler(@PathVariable long id) {
-        return suivi.annulerParPersonnel(id);
+    @Operation(summary = "Annuler une reservation avec un motif (creneau libere, client prevenu par SMS)")
+    public ReservationVue annuler(@PathVariable long id, @RequestBody(required = false) DemandeAnnulation demande) {
+        return suivi.annulerParPersonnel(id, demande == null ? null : demande.motif());
+    }
+
+    public record DemandeAnnulation(String motif) {
     }
 
     public record DemandeScan(@NotBlank String code) {

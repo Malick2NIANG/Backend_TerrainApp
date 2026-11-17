@@ -18,6 +18,6 @@ public interface JournalActions {
     void enregistrerEnTantQue(String acteur, Domaine domaine, String action, String cibleId, String message);
 
     enum Domaine {
-        RESERVATION, TERRAIN, SPORT, BLOCAGE, OFFRE, PERSONNEL, PAIEMENT, REGLAGE
+        RESERVATION, TERRAIN, SPORT, BLOCAGE, OFFRE, ANNONCE, PERSONNEL, PAIEMENT, REGLAGE
     }
 }

@@ -50,9 +50,12 @@ public class Catalogue {
     private final ReservationRepository reservations;
     private final Creneaux creneaux;
     private final Clock horloge;
+    private final sn.terrainapp.backend.avis.application.AvisService avis;
 
     public Catalogue(SportRepository sports, TerrainRepository terrains, HoraireOuvertureRepository horaires,
-                     BlocageRepository blocages, ReservationRepository reservations, Creneaux creneaux, Clock horloge) {
+                     BlocageRepository blocages, ReservationRepository reservations, Creneaux creneaux, Clock horloge,
+                     sn.terrainapp.backend.avis.application.AvisService avis) {
+        this.avis = avis;
         this.sports = sports;
         this.terrains = terrains;
         this.horaires = horaires;
@@ -68,13 +71,40 @@ public class Catalogue {
     }
 
     public List<TerrainVue> terrains(boolean tous) {
-        return (tous ? terrains.tous() : terrains.visibles()).stream().map(TerrainVue::de).toList();
+        var stats = avis.stats();
+        return (tous ? terrains.tous() : terrains.visibles()).stream().map(t -> vue(t, stats)).toList();
+    }
+
+    private static TerrainVue vue(Terrain t, Map<Long, sn.terrainapp.backend.avis.application.AvisService.Stats> stats) {
+        var s = stats.get(t.getId());
+        return s == null ? TerrainVue.de(t) : TerrainVue.de(t, s.moyenne(), s.nombre());
+    }
+
+    /**
+     * Terrains les plus reserves des 30 derniers jours (accueil de l'App
+     * Client), puis dans l'ordre d'affichage du gerant. Les nombres ne sont
+     * pas exposes : seulement le classement.
+     */
+    public List<TerrainVue> tendances(int nombre) {
+        Instant depuis = Instant.now(horloge).minus(java.time.Duration.ofDays(30));
+        Map<Long, Long> comptes = new java.util.HashMap<>();
+        for (Object[] ligne : reservations.comptesParTerrain(depuis,
+                EnumSet.of(StatutReservation.CONFIRMEE, StatutReservation.HONOREE))) {
+            comptes.put((Long) ligne[0], (Long) ligne[1]);
+        }
+        List<Terrain> visibles = terrains.visibles();
+        var stats = avis.stats();
+        return visibles.stream()
+                .sorted(java.util.Comparator.comparingLong((Terrain t) -> -comptes.getOrDefault(t.getId(), 0L))
+                        .thenComparingInt(visibles::indexOf))
+                .limit(Math.max(1, Math.min(nombre, 8)))
+                .map(t -> vue(t, stats)).toList();
     }
 
     public TerrainVue terrain(long id, boolean tous) {
         Terrain t = terrains.findById(id).filter(x -> tous || (x.isActif() && x.getSport().isActif()))
                 .orElseThrow(() -> new RessourceIntrouvableException("Terrain introuvable."));
-        return TerrainVue.de(t);
+        return vue(t, avis.stats());
     }
 
     public List<HoraireVue> horaires() {
@@ -91,7 +121,7 @@ public class Catalogue {
             throw new RequeteInvalideException("DATE_HORS_PERIODE",
                     "Choisissez une date entre aujourd'hui et dans " + JOURS_RESERVABLES + " jours.", "date");
         }
-        List<Terrain> liste = (personnel ? terrains.tous() : terrains.visibles()).stream()
+        List<Terrain> liste = (personnel ? terrains.tous().stream().filter(t -> !t.isArchive()).toList() : terrains.visibles()).stream()
                 .filter(t -> terrainId == null || t.getId().equals(terrainId)).toList();
         if (terrainId != null && liste.isEmpty()) {
             throw new RessourceIntrouvableException("Terrain introuvable.");

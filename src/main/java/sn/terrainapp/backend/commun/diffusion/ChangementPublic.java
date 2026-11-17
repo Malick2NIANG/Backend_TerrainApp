@@ -11,7 +11,9 @@ public record ChangementPublic(Sujet sujet) {
         /** Sports, terrains, tarifs, horaires, blocages. */
         TERRAINS("terrains"),
         /** Un creneau a ete pris ou libere. */
-        DISPONIBILITES("disponibilites");
+        DISPONIBILITES("disponibilites"),
+        /** Annonces publiees, modifiees ou retirees par le gerant. */
+        ANNONCES("annonces");
 
         private final String nom;
 

@@ -60,6 +60,8 @@ services:
     volumes:
       # Photos deposees par le gerant (conservees entre deux redemarrages).
       - terrainapp-photos:/app/donnees/photos
+      # Videos des annonces.
+      - terrainapp-videos:/app/donnees/videos
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8080/api/v1/health"]
       interval: 15s
@@ -70,3 +72,4 @@ services:
 volumes:
   terrainapp-mysql-data:
   terrainapp-photos:
+  terrainapp-videos:

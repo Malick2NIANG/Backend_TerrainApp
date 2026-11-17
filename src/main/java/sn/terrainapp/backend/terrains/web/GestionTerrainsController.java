@@ -71,6 +71,16 @@ public class GestionTerrainsController {
         return gestion.creerTerrain(s);
     }
 
+    public record DemandeStatut(sn.terrainapp.backend.terrains.domaine.StatutTerrain statut) {
+    }
+
+    @org.springframework.web.bind.annotation.PatchMapping("/terrains/{id}/statut")
+    @PreAuthorize("hasRole('GERANT')")
+    @Operation(summary = "Publier, depublier (brouillon), archiver ou restaurer un terrain")
+    public TerrainVue changerStatut(@PathVariable long id, @RequestBody DemandeStatut d) {
+        return gestion.changerStatut(id, d.statut());
+    }
+
     @PutMapping("/terrains/{id}")
     @PreAuthorize("hasRole('GERANT')")
     @Operation(summary = "Modifier un terrain")

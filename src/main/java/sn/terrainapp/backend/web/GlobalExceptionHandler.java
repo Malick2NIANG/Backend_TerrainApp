@@ -126,10 +126,16 @@ public class GlobalExceptionHandler {
                 "Operation impossible : elle entre en conflit avec des donnees existantes."));
     }
 
+    /** Trop de codes SMS demandes pour un numero : 429. */
+    @ExceptionHandler(sn.terrainapp.backend.commun.erreurs.TropDeTentativesException.class)
+    public ResponseEntity<ApiError> handleTropDeTentatives(sn.terrainapp.backend.commun.erreurs.TropDeTentativesException ex) {
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(ApiError.of("TROP_D_ESSAIS", ex.getMessage()));
+    }
+
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     public ResponseEntity<ApiError> handleTropVolumineux(MaxUploadSizeExceededException ex) {
         return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE)
-                .body(ApiError.of("PAYLOAD_TOO_LARGE", "Fichier trop volumineux (2 Mo maximum)."));
+                .body(ApiError.of("PAYLOAD_TOO_LARGE", "Fichier trop volumineux (photo : 2 Mo, vidéo : 30 Mo maximum)."));
     }
 
     /** Corps JSON illisible ou mal forme : 400, pas 500. */
@@ -137,6 +143,16 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiError> handleCorpsIllisible(HttpMessageNotReadableException ex) {
         return ResponseEntity.badRequest()
                 .body(ApiError.of("INVALID_BODY", "Corps de requete illisible ou mal forme"));
+    }
+
+    /**
+     * Parametres de requete mal formes (ex. "?=", nom vide) que Tomcat refuse
+     * en les lisant : 400, pas 500 (releve par le scan DAST).
+     */
+    @ExceptionHandler(org.apache.tomcat.util.http.InvalidParameterException.class)
+    public ResponseEntity<ApiError> handleParametresInvalides(org.apache.tomcat.util.http.InvalidParameterException ex) {
+        return ResponseEntity.badRequest()
+                .body(ApiError.of("INVALID_PARAMETERS", "Parametres de requete mal formes"));
     }
 
     @ExceptionHandler(Exception.class)
