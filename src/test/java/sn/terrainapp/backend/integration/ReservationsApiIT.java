@@ -56,6 +56,27 @@ class ReservationsApiIT extends IntegrationTest {
                 .POST(java.net.http.HttpRequest.BodyPublishers.ofString(corps)).build());
     }
 
+    private long creerTerrainDurees(long tarifHeure, String durees) {
+        String gerant = jeton("GERANT");
+        Reponse sport = envoyer("POST", "/sports", "{\"nom\":\"" + unique("Sport") + "\",\"ordre\":1}", gerant);
+        Reponse t = envoyer("POST", "/terrains", """
+                {"sportId":%d,"nom":"%s","capacite":10,"equipements":["Éclairage"],"dureeCreneauMinutes":60,
+                 "tarifHeure":%d,"ordre":1,"dureesProposees":%s,
+                 "plages":[{"libelle":"Soirée","jours":[1,2,3,4,5,6,7],"debut":"18:00","fin":"01:00","tarifHeure":20000}]}
+                """.formatted(sport.json().get("id").asLong(), unique("Terrain"), tarifHeure, durees), gerant);
+        assertThat(t.statut()).as(t.corps()).isEqualTo(201);
+        return t.json().get("id").asLong();
+    }
+
+    private Reponse reserverDuree(long terrain, Instant debut, Integer duree) {
+        String corps = """
+                {"terrainId":%d,"debut":"%s","clientNom":"Joueur Test","clientTelephone":"%s","moyenPaiement":"wave"%s}
+                """.formatted(terrain, debut, TEL, duree == null ? "" : ",\"dureeMinutes\":" + duree);
+        return executer(java.net.http.HttpRequest.newBuilder(url("/reservations"))
+                .header("Content-Type", "application/json").header("Idempotency-Key", UUID.randomUUID().toString())
+                .POST(java.net.http.HttpRequest.BodyPublishers.ofString(corps)).build());
+    }
+
     private Reponse reserver(long terrain, Instant debut) {
         return reserver(terrain, debut, "wave", UUID.randomUUID().toString());
     }
@@ -99,6 +120,63 @@ class ReservationsApiIT extends IntegrationTest {
         JsonNode c = creneau(dispo, a(jour, 9, 30));
         assertThat(c.get("prix").asLong()).isEqualTo(15000);
         assertThat(Instant.parse(c.get("fin").asString())).isEqualTo(a(jour, 11, 0));
+    }
+
+    @Test
+    void dureesProposeesParLeGerantEtChoisiesParLeJoueur() {
+        long t = creerTerrainDurees(10000, "[60,90,120]");
+        Reponse fiche = get("/terrains/" + t, null);
+        assertThat(fiche.json().get("dureesProposees").toString()).isEqualTo("[60,90,120]");
+        LocalDate jour = dans(2);
+        Reponse dispo = get("/disponibilites?date=" + jour + "&terrainId=" + t, null);
+        // 1 h et 1 h 30 : un debut toutes les 30 min, chaque case au prorata.
+        assertThat(dispo.json().get(0).get("dureeCreneauMinutes").asInt()).isEqualTo(30);
+        assertThat(dispo.json().get(0).get("dureesProposees").toString()).isEqualTo("[60,90,120]");
+        assertThat(creneau(dispo, a(jour, 10, 30)).get("prix").asLong()).isEqualTo(5000);
+
+        // 2 h a 17:00 : 1 h au tarif de base + 1 h au tarif soiree.
+        Reponse r = reserverDuree(t, a(jour, 17, 0), 120);
+        assertThat(r.statut()).as(r.corps()).isEqualTo(201);
+        JsonNode res = r.json().get("reservation");
+        assertThat(res.get("montant").asLong()).isEqualTo(30000);
+        assertThat(Instant.parse(res.get("fin").asString())).isEqualTo(a(jour, 19, 0));
+        Reponse apres = get("/disponibilites?date=" + jour + "&terrainId=" + t, null);
+        assertThat(creneau(apres, a(jour, 17, 0)).get("etat").asString()).isEqualTo("RESERVE");
+        assertThat(creneau(apres, a(jour, 18, 30)).get("etat").asString()).isEqualTo("RESERVE");
+        assertThat(creneau(apres, a(jour, 19, 0)).get("etat").asString()).isEqualTo("LIBRE");
+
+        // Chevauchement sur la periode : refuse ; juste apres : accepte (1 h 30).
+        assertThat(reserverDuree(t, a(jour, 18, 0), 60).statut()).isEqualTo(409);
+        assertThat(reserverDuree(t, a(jour, 16, 0), 90).statut()).isEqualTo(409);
+        Reponse suite = reserverDuree(t, a(jour, 19, 0), 90);
+        assertThat(suite.statut()).as(suite.corps()).isEqualTo(201);
+        assertThat(Instant.parse(suite.json().get("reservation").get("fin").asString())).isEqualTo(a(jour, 20, 30));
+
+        // Duree non proposee, ou qui depasse la fermeture : refusee.
+        assertThat(reserverDuree(t, a(jour, 10, 0), 45).statut()).isEqualTo(400);
+        assertThat(reserverDuree(t, a(jour, 10, 0), 180).statut()).isEqualTo(400);
+        JsonNode cases = dispo.json().get(0).get("creneaux");
+        Instant derniere = Instant.parse(cases.get(cases.size() - 1).get("debut").asString());
+        Reponse tard = reserverDuree(t, derniere, 120);
+        assertThat(tard.statut()).isEqualTo(400);
+        assertThat(tard.json().get("code").asString()).isEqualTo("DUREE_HORS_HORAIRES");
+
+        // Sans duree : la plus courte proposee (compatibilite des anciennes apps).
+        Reponse defaut = reserverDuree(t, a(jour, 9, 0), null);
+        assertThat(defaut.statut()).isEqualTo(201);
+        assertThat(Instant.parse(defaut.json().get("reservation").get("fin").asString())).isEqualTo(a(jour, 10, 0));
+    }
+
+    @Test
+    void dureesIncompatiblesRefusees() {
+        String gerant = jeton("GERANT");
+        Reponse sport = envoyer("POST", "/sports", "{\"nom\":\"" + unique("Sport") + "\",\"ordre\":1}", gerant);
+        Reponse t = envoyer("POST", "/terrains", """
+                {"sportId":%d,"nom":"%s","capacite":10,"dureeCreneauMinutes":60,"tarifHeure":10000,"ordre":1,
+                 "dureesProposees":[45,60]}
+                """.formatted(sport.json().get("id").asLong(), unique("Terrain")), gerant);
+        assertThat(t.statut()).isEqualTo(400);
+        assertThat(t.json().get("code").asString()).isEqualTo("DUREES_INCOMPATIBLES");
     }
 
     @Test

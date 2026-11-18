@@ -82,6 +82,13 @@ public class Terrain {
     @Column(name = "duree_creneau_minutes", nullable = false)
     private int dureeCreneauMinutes;
 
+    /**
+     * Durees de location proposees aux joueurs (minutes, separees par des
+     * virgules, ex. "60,90,120"). Vide : seule la duree de creneau.
+     */
+    @Column(name = "durees_proposees", length = 60)
+    private String dureesProposees;
+
     @Column(name = "tarif_heure", nullable = false)
     private long tarifHeure;
 
@@ -126,6 +133,14 @@ public class Terrain {
     public void modifier(Sport sport, String nom, String description, String localite, String surface, int capacite,
                          List<String> equipements, List<String> photos, int dureeCreneauMinutes, long tarifHeure,
                          boolean actif, int ordre) {
+        modifier(sport, nom, description, localite, surface, capacite, equipements, photos, dureeCreneauMinutes, null,
+                tarifHeure, actif, ordre);
+    }
+
+    /** durees : durees proposees au joueur (null ou vide : la duree de creneau seule). */
+    public void modifier(Sport sport, String nom, String description, String localite, String surface, int capacite,
+                         List<String> equipements, List<String> photos, int dureeCreneauMinutes, List<Integer> durees,
+                         long tarifHeure, boolean actif, int ordre) {
         this.sport = sport;
         this.nom = nom.trim();
         this.description = vide(description);
@@ -138,7 +153,10 @@ public class Terrain {
         if (photos != null) {
             photos.stream().map(Terrain::vide).filter(p -> p != null).distinct().forEach(this.photos::add);
         }
-        this.dureeCreneauMinutes = dureeCreneauMinutes;
+        List<Integer> liste = durees == null ? List.of() : durees.stream().distinct().sorted().toList();
+        this.dureeCreneauMinutes = liste.isEmpty() ? dureeCreneauMinutes : liste.get(0);
+        this.dureesProposees = liste.size() <= 1 ? null
+                : String.join(",", liste.stream().map(String::valueOf).toList());
         this.tarifHeure = tarifHeure;
         this.actif = actif && !archive;
         this.ordre = ordre;
@@ -209,6 +227,27 @@ public class Terrain {
     /** Photo de couverture (la premiere de la galerie), ou null. */
     public String getPhotoUrl() { return photos.isEmpty() ? null : photos.get(0); }
     public int getDureeCreneauMinutes() { return dureeCreneauMinutes; }
+
+    /** Durees proposees au joueur, de la plus courte a la plus longue (au moins la duree de creneau). */
+    public List<Integer> dureesProposees() {
+        if (dureesProposees == null || dureesProposees.isBlank()) {
+            return List.of(dureeCreneauMinutes);
+        }
+        return java.util.Arrays.stream(dureesProposees.split(",")).map(String::trim).filter(x -> !x.isEmpty())
+                .map(Integer::valueOf).distinct().sorted().toList();
+    }
+
+    /**
+     * Pas des heures de debut (minutes) : le plus grand diviseur commun des
+     * durees proposees (1 h et 1 h 30 : un debut toutes les 30 min).
+     */
+    public int pasMinutes() {
+        return dureesProposees().stream().reduce(Terrain::pgcd).orElse(dureeCreneauMinutes);
+    }
+
+    static int pgcd(int a, int b) {
+        return b == 0 ? a : pgcd(b, a % b);
+    }
     public long getTarifHeure() { return tarifHeure; }
     public boolean isActif() { return actif; }
     public int getOrdre() { return ordre; }
