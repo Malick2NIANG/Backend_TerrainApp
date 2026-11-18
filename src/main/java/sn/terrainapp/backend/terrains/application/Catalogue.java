@@ -134,7 +134,7 @@ public class Catalogue {
         List<Blocage> fermetures = blocages.entre(debut, fin);
         Instant maintenant = Instant.now(horloge);
         return liste.stream().map(t -> new DisponibilitesVue(t.getId(), t.getNom(), t.getSport().getNom(),
-                t.getDureeCreneauMinutes(),
+                t.pasMinutes(), t.dureesProposees(),
                 creneaux.pour(t, jour, parJour, occupations, fermetures, maintenant).stream().map(CreneauVue::de).toList()))
                 .toList();
     }

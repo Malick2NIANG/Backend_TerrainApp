@@ -164,7 +164,7 @@ public class GestionAbonnements {
         Instant maintenant = Instant.now(horloge);
         List<SeanceApercu> seances = new ArrayList<>();
         for (Instant debut : dates(premiere, regle)) {
-            var creneau = creneaux.commencantA(terrain, debut);
+            var creneau = creneaux.periode(terrain, debut, terrain.getDureeCreneauMinutes());
             if (creneau.isEmpty()) {
                 seances.add(new SeanceApercu(debut, null, 0, false, "Hors des horaires"));
                 continue;

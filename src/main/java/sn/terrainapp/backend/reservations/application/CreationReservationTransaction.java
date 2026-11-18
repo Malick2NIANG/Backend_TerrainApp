@@ -103,8 +103,15 @@ public class CreationReservationTransaction {
                 .filter(t -> t.isActif() && t.getSport().isActif())
                 .orElseThrow(() -> new RequeteInvalideException("TERRAIN_INDISPONIBLE",
                         "Ce terrain n'est pas réservable.", "terrainId"));
-        Creneaux.Creneau creneau = creneaux.commencantA(terrain, s.debut()).orElseThrow(() ->
-                new RequeteInvalideException("CRENEAU_INVALIDE", "Ce créneau n'existe pas pour ce terrain.", "debut"));
+        int duree = s.dureeMinutes() == null ? terrain.dureesProposees().get(0) : s.dureeMinutes();
+        if (!terrain.dureesProposees().contains(duree)) {
+            throw new RequeteInvalideException("DUREE_INVALIDE", "Cette durée n'est pas proposée pour ce terrain.", "dureeMinutes");
+        }
+        if (creneaux.commencantA(terrain, s.debut()).isEmpty()) {
+            throw new RequeteInvalideException("CRENEAU_INVALIDE", "Ce créneau n'existe pas pour ce terrain.", "debut");
+        }
+        Creneaux.Creneau creneau = creneaux.periode(terrain, s.debut(), duree).orElseThrow(() ->
+                new RequeteInvalideException("DUREE_HORS_HORAIRES", "Cette durée dépasse l'heure de fermeture.", "dureeMinutes"));
         if (!creneau.debut().isAfter(maintenant)) {
             throw new ConflitException("CRENEAU_PASSE", "Ce créneau est déjà passé.");
         }

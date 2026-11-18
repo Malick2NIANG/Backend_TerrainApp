@@ -86,7 +86,7 @@ public class Creneaux {
         if (plage.isEmpty()) {
             return resultat;
         }
-        long pas = terrain.getDureeCreneauMinutes() * 60L;
+        long pas = terrain.pasMinutes() * 60L;
         for (Instant d = plage.get()[0]; !d.plusSeconds(pas).isAfter(plage.get()[1]); d = d.plusSeconds(pas)) {
             Instant f = d.plusSeconds(pas);
             final Instant debut = d;
@@ -124,13 +124,49 @@ public class Creneaux {
         return Optional.empty();
     }
 
-    /** Prix d'un creneau commencant a cet instant. */
+    /**
+     * La periode de location qui commence a cet instant et dure ces minutes :
+     * creneaux consecutifs de la grille, sans trou ni depassement de la
+     * fermeture. Prix : somme des creneaux (chacun a son tarif horaire).
+     * Vide si le debut n'existe pas ou si la duree depasse la fermeture.
+     */
+    public Optional<Creneau> periode(Terrain terrain, Instant debut, int minutes) {
+        int pas = terrain.pasMinutes();
+        if (minutes < pas || minutes % pas != 0) {
+            return Optional.empty();
+        }
+        int n = minutes / pas;
+        Map<DayOfWeek, HoraireOuverture> parJour = horairesParJour();
+        LocalDate jour = debut.atZone(Horloge.DAKAR).toLocalDate();
+        for (LocalDate j : List.of(jour, jour.minusDays(1))) {
+            List<Creneau> liste = pour(terrain, j, parJour, List.of(), List.of(), Instant.MIN);
+            for (int i = 0; i < liste.size(); i++) {
+                if (!liste.get(i).debut().equals(debut)) {
+                    continue;
+                }
+                if (i + n > liste.size()) {
+                    return Optional.empty();
+                }
+                long prix = 0;
+                for (int k = i; k < i + n; k++) {
+                    if (k > i && !liste.get(k).debut().equals(liste.get(k - 1).fin())) {
+                        return Optional.empty();
+                    }
+                    prix += liste.get(k).prix();
+                }
+                return Optional.of(new Creneau(debut, liste.get(i + n - 1).fin(), prix, Etat.LIBRE));
+            }
+        }
+        return Optional.empty();
+    }
+
+    /** Prix d'un creneau (un pas de la grille) commencant a cet instant. */
     public long prix(Terrain terrain, Instant debut) {
         ZonedDateTime z = debut.atZone(Horloge.DAKAR);
         long tarif = terrain.getPlages().stream()
                 .filter(p -> p.couvre(z.getDayOfWeek(), z.toLocalTime()))
                 .mapToLong(PlageTarifaire::getTarifHeure)
                 .findFirst().orElse(terrain.getTarifHeure());
-        return Math.round(tarif * terrain.getDureeCreneauMinutes() / 60.0);
+        return Math.round(tarif * terrain.pasMinutes() / 60.0);
     }
 }

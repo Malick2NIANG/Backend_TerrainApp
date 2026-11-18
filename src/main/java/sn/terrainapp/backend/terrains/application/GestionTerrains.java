@@ -74,7 +74,8 @@ public class GestionTerrains {
                                 @Size(max = MAX_PHOTOS, message = "10 photos ou vidéos au maximum.") List<@NotBlank @Size(max = 500) String> photos,
                                 @Min(30) @Max(240) int dureeCreneauMinutes,
                                 @Min(0) long tarifHeure, List<@Valid SaisiePlage> plages, Boolean actif,
-                                @Min(0) int ordre, List<@Valid SaisieHoraire> horaires) {
+                                @Min(0) int ordre, List<@Valid SaisieHoraire> horaires,
+                                @Size(max = 6, message = "6 durées au maximum.") List<@NotNull @Min(30) @Max(240) Integer> dureesProposees) {
     }
 
     public record SaisieHoraire(@Min(1) @Max(7) int jour, boolean ouvert, @NotNull LocalTime ouverture,
@@ -198,6 +199,10 @@ public class GestionTerrains {
         return TerrainVue.de(t);
     }
 
+    private static int pgcd(int a, int b) {
+        return b == 0 ? a : pgcd(b, a % b);
+    }
+
     /** actif : publie a la creation ; une modification garde le brouillon (publication par PATCH statut). */
     private void appliquer(Terrain t, SaisieTerrain s, boolean actif) {
         for (String media : s.photos() == null ? List.<String>of() : s.photos()) {
@@ -206,8 +211,13 @@ public class GestionTerrains {
                         "Galerie : photo (JPEG, PNG, WebP) ou vidéo (MP4, WebM) attendue.", "photos");
             }
         }
+        List<Integer> durees = s.dureesProposees() == null ? List.of() : s.dureesProposees().stream().distinct().sorted().toList();
+        if (durees.size() > 1 && durees.stream().reduce((a, b) -> pgcd(a, b)).orElse(30) < 30) {
+            throw new RequeteInvalideException("DUREES_INCOMPATIBLES",
+                    "Ces durées ne peuvent pas être proposées ensemble (débuts à moins de 30 min d'écart).", "dureesProposees");
+        }
         t.modifier(sport(s.sportId()), s.nom(), s.description(), s.localite(), s.surface(), s.capacite(),
-                s.equipements(), s.photos(), s.dureeCreneauMinutes(), s.tarifHeure(), actif, s.ordre());
+                s.equipements(), s.photos(), s.dureeCreneauMinutes(), durees, s.tarifHeure(), actif, s.ordre());
         if ((s.latitude() == null) != (s.longitude() == null)) {
             throw new RequeteInvalideException("GPS_INCOMPLET", "Position GPS : indiquez la latitude ET la longitude.", "latitude");
         }

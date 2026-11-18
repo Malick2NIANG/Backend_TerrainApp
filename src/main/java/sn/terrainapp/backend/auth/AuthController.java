@@ -58,4 +58,14 @@ public class AuthController {
                                 request.newPassword()
                 );
         }
+
+    @PostMapping("/change-password")
+    @Operation(
+            summary = "Changer son mot de passe",
+            description = "Membre du personnel connecte : verifie le mot de passe actuel, enregistre le nouveau "
+                    + "(12 caracteres minimum) et renvoie une nouvelle session."
+    )
+    public LoginResponse changePassword(@Valid @RequestBody ChangePasswordRequest request, java.security.Principal principal) {
+        return authService.changePassword(principal.getName(), request.currentPassword(), request.newPassword());
+    }
 }

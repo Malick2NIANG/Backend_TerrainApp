@@ -38,7 +38,8 @@ public final class Vues {
                              Double latitude, Double longitude, String surface, int capacite, List<String> equipements, String photoUrl,
                              List<String> photos, int dureeCreneauMinutes,
                              long tarifHeure, List<PlageVue> plages, boolean actif, int ordre, long version,
-                             Double noteMoyenne, long nombreAvis, List<HoraireVue> horaires, String statut) {
+                             Double noteMoyenne, long nombreAvis, List<HoraireVue> horaires, String statut,
+                             List<Integer> dureesProposees) {
         public static TerrainVue de(Terrain t) {
             return de(t, null, 0);
         }
@@ -49,7 +50,7 @@ public final class Vues {
                     List.copyOf(t.getPhotos()), t.getDureeCreneauMinutes(),
                     t.getTarifHeure(), t.getPlages().stream().map(PlageVue::de).toList(), t.isActif(), t.getOrdre(),
                     t.getVersion(), noteMoyenne, nombreAvis, t.getHoraires().stream().map(HoraireVue::de).toList(),
-                    t.getStatut().name());
+                    t.getStatut().name(), t.dureesProposees());
         }
     }
 
@@ -77,7 +78,8 @@ public final class Vues {
     }
 
     /** Disponibilites d'un terrain pour un jour (App Client et planning). */
+    /** dureeCreneauMinutes : pas des creneaux de la grille ; dureesProposees : durees que le joueur peut choisir. */
     public record DisponibilitesVue(long terrainId, String terrain, String sport, int dureeCreneauMinutes,
-                                    List<CreneauVue> creneaux) {
+                                    List<Integer> dureesProposees, List<CreneauVue> creneaux) {
     }
 }

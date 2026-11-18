@@ -58,6 +58,28 @@ public class AuthService {
     }
 
     /**
+     * Le membre connecte change son mot de passe. Mot de passe actuel faux :
+     * 400 (et non 401, qui fermerait la session dans l'app).
+     */
+    @Transactional
+    public LoginResponse changePassword(String username, String currentPassword, String newPassword) {
+        StaffUser user = staffUserRepository.findByUsernameIgnoreCase(username)
+                .filter(StaffUser::isActive)
+                .orElseThrow(() -> new BadCredentialsException("Invalid credentials"));
+        if (!passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Le mot de passe actuel est incorrect.");
+        }
+        if (passwordEncoder.matches(newPassword, user.getPasswordHash())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Choisissez un mot de passe different de l'actuel.");
+        }
+        user.setPasswordHash(passwordEncoder.encode(newPassword));
+        user.setMustChangePassword(false);
+        staffUserRepository.save(user);
+        return issueSession(user);
+    }
+
+    /**
      * Compte actif dont le mot de passe correspond, sinon BadCredentialsException.
      * Le mot de passe est TOUJOURS verifie par BCrypt, meme quand l'identifiant
      * n'existe pas (hash factice) : le temps de reponse ne revele pas quels
