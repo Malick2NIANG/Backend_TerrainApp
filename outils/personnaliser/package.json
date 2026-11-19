@@ -8,7 +8,7 @@
   "scripts": {
     "client": "node src/cli.js",
     "valider": "node src/cli.js --valider",
-    "test": "node --test \"test/*.test.js\"",
+    "test": "node --test test/generation.test.js test/validation.test.js",
     "lint": "eslint ."
   },
   "dependencies": {
