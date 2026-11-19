@@ -39,7 +39,7 @@ jobs:
         run: >
           semgrep scan --error --metrics=off
           --config p/default --config p/secrets --config p/owasp-top-ten
-          --exclude target
+          --exclude target --exclude node_modules
 
   trivy:
     runs-on: ubuntu-latest

@@ -25,6 +25,12 @@ docker compose up -d --build --wait
 Comptes du personnel créés au démarrage (`APP_AUTH_SEED_ENABLED=true`) :
 `gerant`, `accueil`, `controleur`, `admin`, mots de passe dans `.env`.
 
+## Personnaliser pour un complexe
+
+Un dossier `clients/<id>/` (identite, couleurs, logo, terrains, personnel) et une commande :
+`cd outils/personnaliser && npm ci && npm run client -- <id>`. Guide complet :
+[`PERSONNALISER-UN-COMPLEXE.md`](PERSONNALISER-UN-COMPLEXE.md). Exemple : [`clients/exemple/`](clients/exemple/).
+
 ## Tests
 
 ```bash

@@ -48,8 +48,6 @@ public class CreationReservationTransaction {
 
     private static final EnumSet<StatutReservation> OCCUPANTS = EnumSet.of(StatutReservation.EN_ATTENTE_PAIEMENT,
             StatutReservation.CONFIRMEE, StatutReservation.HONOREE);
-    private static final EnumSet<MoyenPaiement> EN_LIGNE = EnumSet.of(MoyenPaiement.WAVE, MoyenPaiement.ORANGE_MONEY, MoyenPaiement.CARTE,
-            MoyenPaiement.MIXX_YAS);
 
     /** Reponse de creation : la vue, le jeton de suivi (APP, donne une seule fois) et le paiement. */
     @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -70,12 +68,15 @@ public class CreationReservationTransaction {
     private final Idempotence idempotence;
     private final ObjectMapper json;
     private final Clock horloge;
+    /** Moyens de paiement en ligne proposes par le complexe (dossier du complexe, sinon tous). */
+    private final sn.terrainapp.backend.complexe.IdentiteComplexe identite;
 
     public CreationReservationTransaction(TerrainRepository terrains, ReservationRepository reservations,
                                           BlocageRepository blocages, Creneaux creneaux, PaiementService paiements,
                                           EvenementSortantRepository evenements, ApplicationEventPublisher publication,
                                           JournalActions journal, Idempotence idempotence, ObjectMapper json,
-                                          Clock horloge) {
+                                          Clock horloge, sn.terrainapp.backend.complexe.IdentiteComplexe identite) {
+        this.identite = identite;
         this.terrains = terrains;
         this.reservations = reservations;
         this.blocages = blocages;
@@ -92,9 +93,9 @@ public class CreationReservationTransaction {
     @Transactional
     public String executer(SaisieReservation s, Canal canal, String cleIdempotence) {
         Instant maintenant = Instant.now(horloge);
-        if (canal == Canal.APP && !EN_LIGNE.contains(s.moyenPaiement())) {
+        if (canal == Canal.APP && !identite.moyensEnLigneAutorises().contains(s.moyenPaiement())) {
             throw new RequeteInvalideException("MOYEN_PAIEMENT_INVALIDE",
-                    "Payez avec Wave, Orange Money, Mixx by Yas ou par carte.", "moyenPaiement");
+                    identite.phraseMoyensEnLigne(), "moyenPaiement");
         }
         String telephone = Telephone.normaliser(s.clientTelephone()).orElseThrow(() -> new RequeteInvalideException(
                 "TELEPHONE_INVALIDE", "Indiquez un numéro sénégalais à 9 chiffres.", "clientTelephone"));

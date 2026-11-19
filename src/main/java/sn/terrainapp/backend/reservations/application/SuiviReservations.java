@@ -25,7 +25,7 @@ import sn.terrainapp.backend.commun.erreurs.RequeteInvalideException;
 import sn.terrainapp.backend.commun.erreurs.RessourceIntrouvableException;
 import sn.terrainapp.backend.commun.securite.UtilisateurCourant;
 import sn.terrainapp.backend.commun.temps.Horloge;
-import sn.terrainapp.backend.marque.Marque;
+import sn.terrainapp.backend.complexe.IdentiteComplexe;
 import sn.terrainapp.backend.reservations.domaine.Canal;
 import sn.terrainapp.backend.reservations.domaine.Reservation;
 import sn.terrainapp.backend.security.Role;
@@ -47,7 +47,7 @@ public class SuiviReservations {
     private final JetonsAcces jetonsAcces;
     private final AvisRepository avis;
     private final EnvoiSms sms;
-    private final Marque marque;
+    private final IdentiteComplexe marque;
     private static final DateTimeFormatter JOUR = DateTimeFormatter.ofPattern("d/MM 'à' HH:mm");
 
     /** Reservation retrouvee par code SMS, avec son jeton d'acces (90 jours). */
@@ -56,7 +56,7 @@ public class SuiviReservations {
 
     public SuiviReservations(ReservationRepository reservations, EvenementSortantRepository evenements,
                              ApplicationEventPublisher publication, JournalActions journal, Clock horloge,
-                             JetonsAcces jetonsAcces, AvisRepository avis, EnvoiSms sms, Marque marque) {
+                             JetonsAcces jetonsAcces, AvisRepository avis, EnvoiSms sms, IdentiteComplexe marque) {
         this.avis = avis;
         this.sms = sms;
         this.marque = marque;
@@ -138,6 +138,14 @@ public class SuiviReservations {
         Instant maintenant = Instant.now(horloge);
         if (!r.getDebut().isAfter(maintenant)) {
             throw new ConflitException("CRENEAU_COMMENCE", "Le créneau a commencé : la réservation ne peut plus être annulée.");
+        }
+        // Delai d'annulation du complexe (dossier du complexe ; aucun par defaut) :
+        // passe ce delai, seul le gerant (ou l'admin) annule encore, motif a l'appui.
+        var delai = marque.delaiAnnulationHeures();
+        if (delai.isPresent() && r.getDebut().isBefore(maintenant.plus(java.time.Duration.ofHours(delai.get())))
+                && UtilisateurCourant.role().filter(x -> x == Role.GERANT || x == Role.ADMIN).isEmpty()) {
+            throw new ConflitException("DELAI_ANNULATION_DEPASSE", "Annulation possible jusqu'à " + delai.get()
+                    + " h avant le créneau : passé ce délai, seul le gérant peut annuler.");
         }
         boolean aRembourser = r.getCanal() == Canal.APP && r.getPayeeLe() != null;
         if (aRembourser && UtilisateurCourant.role().filter(x -> x == Role.GERANT).isEmpty()) {

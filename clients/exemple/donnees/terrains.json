@@ -1,0 +1,60 @@
+[
+  {
+    "cle": "terrain-a",
+    "sport": "foot-5",
+    "nom": "Terrain A",
+    "description": "Terrain couvert, gazon récent et éclairage LED : idéal pour les matchs du soir.",
+    "localite": "Thiès",
+    "surface": "Gazon synthétique",
+    "capacite": 10,
+    "equipements": ["Éclairage", "Vestiaires", "Douches", "Parking"],
+    "photos": ["terrain-a-1.jpg", "terrain-a-2.jpg"],
+    "tarifHeure": 15000,
+    "dureesProposees": [60, 90, 120],
+    "plages": [
+      { "libelle": "Soirée", "jours": ["lundi", "mardi", "mercredi", "jeudi", "vendredi"], "debut": "18:00", "fin": "01:00", "tarifHeure": 20000 },
+      { "libelle": "Week-end", "jours": ["samedi", "dimanche"], "debut": "08:00", "fin": "01:00", "tarifHeure": 20000 }
+    ],
+    "publie": true,
+    "ordre": 1
+  },
+  {
+    "cle": "grand-terrain",
+    "sport": "foot-7",
+    "nom": "Grand terrain",
+    "description": "Terrain à 7 avec tribune de 80 places, pour les tournois et les matchs de quartier.",
+    "localite": "Thiès",
+    "surface": "Gazon synthétique",
+    "capacite": 14,
+    "equipements": ["Éclairage", "Vestiaires", "Tribune", "Buvette"],
+    "photos": ["grand-terrain-1.jpg"],
+    "tarifHeure": 25000,
+    "dureesProposees": [90, 120],
+    "publie": true,
+    "ordre": 2
+  },
+  {
+    "cle": "padel-1",
+    "sport": "padel",
+    "nom": "Padel 1",
+    "description": "Court vitré aux dimensions officielles, raquettes en location.",
+    "localite": "Thiès",
+    "surface": "Gazon synthétique",
+    "capacite": 4,
+    "equipements": ["Éclairage", "Location de raquettes"],
+    "photos": ["padel-1.jpg"],
+    "tarifHeure": 10000,
+    "dureesProposees": [60, 90],
+    "horaires": {
+      "lundi":    { "ouverture": "09:00", "fermeture": "22:00" },
+      "mardi":    { "ouverture": "09:00", "fermeture": "22:00" },
+      "mercredi": { "ouverture": "09:00", "fermeture": "22:00" },
+      "jeudi":    { "ouverture": "09:00", "fermeture": "22:00" },
+      "vendredi": { "ouverture": "09:00", "fermeture": "22:00" },
+      "samedi":   { "ouverture": "09:00", "fermeture": "22:00" },
+      "dimanche": "ferme"
+    },
+    "publie": true,
+    "ordre": 3
+  }
+]

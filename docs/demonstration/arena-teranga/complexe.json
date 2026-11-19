@@ -1,0 +1,40 @@
+{
+  "identifiant": "arena-teranga",
+  "marque": {
+    "nom": "Arena Teranga",
+    "nomAccent": "Teranga",
+    "nomComplexe": "Arena Teranga Saly",
+    "slogan": "Le foot côté plage, réservé en un clic.",
+    "sousTitre": "Réservation en ligne · Saly",
+    "couleurs": { "principale": "#C2410C", "foncee": "#7C2D12", "claire": "#FDBA74" },
+    "logo": "logo.svg",
+    "imageAccueil": "accueil.jpg"
+  },
+  "contact": {
+    "telephone": "+221 33 957 00 00",
+    "whatsapp": "+221 78 000 00 00",
+    "email": "bonjour@arena-teranga.sn",
+    "adresse": "Route de la plage, Saly Portudal",
+    "ville": "Saly",
+    "gps": { "latitude": 14.4458, "longitude": -17.0058 },
+    "reseauxSociaux": { "instagram": "https://www.instagram.com/arena.teranga" }
+  },
+  "horaires": {
+    "lundi": { "ouverture": "09:00", "fermeture": "23:00" },
+    "mardi": { "ouverture": "09:00", "fermeture": "23:00" },
+    "mercredi": { "ouverture": "09:00", "fermeture": "23:00" },
+    "jeudi": { "ouverture": "09:00", "fermeture": "23:00" },
+    "vendredi": { "ouverture": "09:00", "fermeture": "02:00" },
+    "samedi": { "ouverture": "09:00", "fermeture": "02:00" },
+    "dimanche": "ferme"
+  },
+  "paiement": { "moyens": ["orange-money", "wave"] },
+  "reservation": { "pasCreneauMinutes": 60, "delaiAnnulationHeures": 12, "margeEntreeMinutes": 20 },
+  "documents": { "nomSurTickets": "ARENA TERANGA SALY", "piedDeRecu": "À bientôt côté plage !" },
+  "textes": {
+    "accueilTitre": "Le foot côté plage, réservé en un clic.",
+    "accueilSousTitre": "Deux terrains face à la mer, ouverts jusqu'à 2 h le week-end",
+    "aPropos": "Terrain de foot à 5 sur sable et terrain à 7 en gazon, douches, bar et parking. Fermé le dimanche."
+  },
+  "deploiement": { "urlClient": "https://reserver.arena-teranga.sn", "urlManager": "https://gestion.arena-teranga.sn", "version": "1.0.0" }
+}

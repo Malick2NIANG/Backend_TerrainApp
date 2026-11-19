@@ -1,0 +1,35 @@
+{
+  "identifiant": "complexe-test",
+  "marque": {
+    "nom": "Arena Test",
+    "nomAccent": "Test",
+    "nomComplexe": "Complexe sportif Arena Test",
+    "slogan": "Le terrain des tests, réservé en une minute.",
+    "sousTitre": "Réservation en ligne · Thiès",
+    "couleurs": { "principale": "#1f4e9a", "foncee": "#163A73" },
+    "logo": "logo.png"
+  },
+  "contact": {
+    "telephone": "+221 33 900 00 00",
+    "whatsapp": "+221 77 900 00 00",
+    "email": "contact@arena-test.sn",
+    "adresse": "Route de Dakar",
+    "ville": "Thiès",
+    "gps": { "latitude": 14.7910, "longitude": -16.9256 },
+    "reseauxSociaux": { "instagram": "https://instagram.com/arena.test" }
+  },
+  "horaires": {
+    "lundi": { "ouverture": "08:00", "fermeture": "23:00" },
+    "mardi": { "ouverture": "08:00", "fermeture": "23:00" },
+    "mercredi": { "ouverture": "08:00", "fermeture": "23:00" },
+    "jeudi": { "ouverture": "08:00", "fermeture": "23:00" },
+    "vendredi": { "ouverture": "08:00", "fermeture": "00:00" },
+    "samedi": { "ouverture": "08:00", "fermeture": "00:00" },
+    "dimanche": { "ouverture": "08:00", "fermeture": "23:00" }
+  },
+  "paiement": { "moyens": ["wave", "orange-money", "carte"] },
+  "reservation": { "pasCreneauMinutes": 30, "delaiAnnulationHeures": 48 },
+  "documents": { "nomSurTickets": "ARENA TEST", "piedDeRecu": "Merci et bon match à Arena Test !" },
+  "textes": { "accueilSousTitre": "Trois terrains au cœur de Thiès" },
+  "deploiement": { "urlClient": "https://reserver.arena-test.sn", "urlManager": "https://gestion.arena-test.sn" }
+}

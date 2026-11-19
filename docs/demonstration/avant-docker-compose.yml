@@ -1,0 +1,32 @@
+# AVANT : memes images, sans dossier de complexe (marque TerrainApp par defaut,
+# donnees de demonstration du profil dev).
+name: terrainapp-avant
+services:
+  mysql:
+    image: mysql:8.0
+    environment: { MYSQL_ROOT_PASSWORD: avant-root, MYSQL_DATABASE: terrainapp, MYSQL_USER: terrainapp, MYSQL_PASSWORD: avant-mdp }
+    healthcheck: { test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -pavant-root"], interval: 5s, retries: 20 }
+  backend:
+    image: terrainapp-backend:local
+    depends_on: { mysql: { condition: service_healthy } }
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/terrainapp
+      SPRING_DATASOURCE_USERNAME: terrainapp
+      SPRING_DATASOURCE_PASSWORD: avant-mdp
+      APP_JWT_SECRET: secret-jetable-de-la-demonstration-avant-apres-0123456789
+      APP_AUTH_SEED_ENABLED: "true"
+      APP_AUTH_SEED_GERANT_PASSWORD: Gerant-Demo-2026
+      APP_AUTH_SEED_ACCUEIL_PASSWORD: Accueil-Demo-2026
+      APP_AUTH_SEED_CONTROLEUR_PASSWORD: Controleur-Demo-2026
+      APP_AUTH_SEED_ADMIN_PASSWORD: Admin-Demo-2026
+  client:
+    image: terrainapp-client:local
+    depends_on: { backend: { condition: service_healthy } }
+    environment: { API_UPSTREAM: "http://backend:8080" }
+    ports: ["5190:8080"]
+  manager:
+    image: terrainapp-manager:local
+    depends_on: { backend: { condition: service_healthy } }
+    environment: { API_UPSTREAM: "http://backend:8080" }
+    ports: ["5191:8080"]

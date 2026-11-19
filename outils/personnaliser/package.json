@@ -1,0 +1,24 @@
+{
+  "name": "terrainapp-personnaliser",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Personnalise TerrainApp pour un complexe : valide clients/<id>/ et produit son deploiement.",
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "client": "node src/cli.js",
+    "valider": "node src/cli.js --valider",
+    "test": "node --test test/generation.test.js test/validation.test.js",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "ajv": "^8.20.0",
+    "bcryptjs": "^3.0.3",
+    "sharp": "^0.35.5"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "eslint": "^9.39.5",
+    "globals": "^17.14.0"
+  }
+}

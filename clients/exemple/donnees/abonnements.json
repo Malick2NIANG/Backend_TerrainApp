@@ -1,0 +1,12 @@
+[
+  {
+    "cle": "academie-jeunes-2027",
+    "terrain": "grand-terrain",
+    "client": { "nom": "Académie des Jeunes de Thiès", "telephone": "+221 77 000 00 10" },
+    "frequence": "HEBDOMADAIRE",
+    "jours": ["mardi"],
+    "premiereSeance": "2027-01-05T17:00",
+    "nombreSeances": 12,
+    "reglement": "SEANCE"
+  }
+]

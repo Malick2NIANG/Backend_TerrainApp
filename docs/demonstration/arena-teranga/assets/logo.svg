@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Logo fictif de demonstration : soleil couchant sur la mer, ballon. -->
+  <circle cx="256" cy="256" r="240" fill="#1E3A5F"/>
+  <circle cx="256" cy="280" r="120" fill="#F97316"/>
+  <rect x="16" y="300" width="480" height="196" fill="#1E3A5F"/>
+  <path d="M96 330 Q136 310 176 330 T256 330 T336 330 T416 330" fill="none" stroke="#FDBA74" stroke-width="16" stroke-linecap="round"/>
+  <path d="M136 382 Q176 362 216 382 T296 382 T376 382" fill="none" stroke="#FDBA74" stroke-width="16" stroke-linecap="round"/>
+  <circle cx="256" cy="150" r="44" fill="#FFFFFF"/>
+  <path d="M256 120 l20 15 -8 24 h-24 l-8 -24 z" fill="#1E3A5F"/>
+</svg>

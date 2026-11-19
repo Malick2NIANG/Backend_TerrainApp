@@ -1,0 +1,5 @@
+[
+  { "identifiant": "gerant", "role": "GERANT", "prenom": "Prénom", "nom": "Gérant", "telephone": "+221 77 000 00 02" },
+  { "identifiant": "accueil", "role": "ACCUEIL", "prenom": "Prénom", "nom": "Accueil" },
+  { "identifiant": "controleur", "role": "CONTROLEUR", "prenom": "Prénom", "nom": "Contrôleur" }
+]

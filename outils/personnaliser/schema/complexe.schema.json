@@ -1,0 +1,238 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://terrainapp.sn/schema/complexe.schema.json",
+  "title": "Complexe sportif (complexe.json)",
+  "description": "Identité, coordonnées, horaires, paiement et règles d'un complexe TerrainApp. Aucun secret ici.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["identifiant", "marque", "contact", "horaires", "paiement", "documents", "deploiement"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "identifiant": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{1,39}$",
+      "x-erreur": "identifiant invalide : minuscules, chiffres et tirets, 2 à 40 caractères (ex. arena-thies)"
+    },
+    "marque": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["nom", "nomComplexe", "slogan", "couleurs", "logo"],
+      "properties": {
+        "nom": { "type": "string", "minLength": 1, "maxLength": 40, "description": "Nom court de la marque (titre des apps, SMS)." },
+        "nomAccent": { "type": "string", "maxLength": 40, "description": "Fin du nom affichée dans la couleur de la marque (ex. « Thiès » pour « Arena Thiès »)." },
+        "initiales": { "type": "string", "minLength": 1, "maxLength": 3, "description": "Monogramme, si pas de logo affichable." },
+        "nomComplexe": { "type": "string", "minLength": 1, "maxLength": 80, "description": "Nom complet du complexe." },
+        "slogan": { "type": "string", "minLength": 1, "maxLength": 120, "description": "Slogan (accueil, écran de démarrage). Une virgule coupe la ligne." },
+        "sousTitre": { "type": "string", "maxLength": 80 },
+        "couleurs": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["principale"],
+          "properties": {
+            "principale": { "$ref": "#/$defs/couleur" },
+            "foncee": { "$ref": "#/$defs/couleur" },
+            "claire": { "$ref": "#/$defs/couleur" }
+          }
+        },
+        "logo": { "$ref": "#/$defs/fichierImage", "description": "Fichier dans assets/ (PNG ou SVG carré, 512 px minimum)." },
+        "imageAccueil": { "$ref": "#/$defs/fichierImage", "description": "Image de fond de l'accueil, dans assets/ (1600 px de large minimum)." },
+        "splash": { "$ref": "#/$defs/fichierImage", "description": "Image de fond de l'écran de démarrage, dans assets/ (facultative)." }
+      }
+    },
+    "contact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["telephone", "email", "adresse", "ville", "gps"],
+      "properties": {
+        "telephone": { "$ref": "#/$defs/telephone" },
+        "whatsapp": { "$ref": "#/$defs/telephone" },
+        "email": { "$ref": "#/$defs/email" },
+        "adresse": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "ville": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "gps": { "$ref": "#/$defs/gps" },
+        "reseauxSociaux": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "facebook": { "$ref": "#/$defs/urlHttps" },
+            "instagram": { "$ref": "#/$defs/urlHttps" },
+            "tiktok": { "$ref": "#/$defs/urlHttps" },
+            "x": { "$ref": "#/$defs/urlHttps" },
+            "youtube": { "$ref": "#/$defs/urlHttps" },
+            "siteWeb": { "$ref": "#/$defs/urlHttps" }
+          }
+        }
+      }
+    },
+    "support": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Contact de la feuille « Besoin d'aide ? » (sinon celui du complexe).",
+      "properties": {
+        "telephone": { "$ref": "#/$defs/telephone" },
+        "email": { "$ref": "#/$defs/email" }
+      }
+    },
+    "horaires": { "$ref": "#/$defs/horaires" },
+    "paiement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["moyens"],
+      "properties": {
+        "moyens": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": ["wave", "orange-money", "mixx-yas", "carte"],
+            "x-erreur": "moyen de paiement inconnu (attendu : wave, orange-money, mixx-yas, carte)"
+          },
+          "description": "Moyens de paiement EN LIGNE proposés aux joueurs. Les espèces restent possibles au comptoir."
+        }
+      }
+    },
+    "reservation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "pasCreneauMinutes": {
+          "enum": [30, 60, 90, 120],
+          "x-erreur": "pas des créneaux invalide (attendu : 30, 60, 90 ou 120 minutes)"
+        },
+        "delaiAnnulationHeures": {
+          "type": "integer", "minimum": 1, "maximum": 168,
+          "description": "Passé ce délai avant le créneau, seul le gérant annule. Absent : aucune règle."
+        },
+        "margeEntreeMinutes": {
+          "type": "integer", "minimum": 0, "maximum": 240,
+          "description": "Entrée acceptée au plus tôt X minutes avant le créneau (30 par défaut)."
+        }
+      }
+    },
+    "documents": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["nomSurTickets"],
+      "properties": {
+        "nomSurTickets": { "type": "string", "minLength": 1, "maxLength": 40, "description": "Nom imprimé en tête des tickets et reçus PDF." },
+        "piedDeRecu": { "type": "string", "maxLength": 120, "description": "Phrase en pied de reçu (ex. « Merci et bon match ! »)." }
+      }
+    },
+    "textes": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "accueilTitre": { "type": "string", "maxLength": 80, "description": "Titre de l'accueil (sinon le slogan)." },
+        "accueilSousTitre": { "type": "string", "maxLength": 120 },
+        "aPropos": { "type": "string", "maxLength": 500, "description": "Présentation du complexe (bloc « le complexe »)." }
+      }
+    },
+    "deploiement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["urlClient", "urlManager"],
+      "properties": {
+        "urlClient": { "$ref": "#/$defs/url", "description": "Adresse publique de l'app des joueurs." },
+        "urlManager": { "$ref": "#/$defs/url", "description": "Adresse du back-office." },
+        "version": {
+          "type": "string", "pattern": "^v?[0-9]+\\.[0-9]+\\.[0-9]+$",
+          "x-erreur": "version invalide (ex. 1.4.0, tag des images Docker)"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "couleur": {
+      "type": "string",
+      "pattern": "^#[0-9A-Fa-f]{6}$",
+      "x-erreur": "couleur invalide (format #RRGGBB, ex. #1F7A4D)"
+    },
+    "telephone": {
+      "type": "string",
+      "pattern": "^\\+?[0-9 ]{9,20}$",
+      "x-erreur": "numéro de téléphone invalide (ex. +221 77 000 00 00)"
+    },
+    "email": {
+      "type": "string",
+      "pattern": "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$",
+      "x-erreur": "adresse e-mail invalide"
+    },
+    "url": {
+      "type": "string",
+      "pattern": "^https?://[^\\s/]+.*$",
+      "x-erreur": "URL invalide (ex. https://reserver.mon-complexe.sn)"
+    },
+    "urlHttps": {
+      "type": "string",
+      "pattern": "^https://[^\\s/]+.*$",
+      "x-erreur": "lien invalide (https://… attendu)"
+    },
+    "fichierImage": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9_/-]*\\.(png|svg|jpg|jpeg|webp)$",
+      "x-erreur": "nom de fichier d'image invalide (minuscules, chiffres, tirets ; .png, .svg, .jpg, .webp)"
+    },
+    "fichierMedia": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9_-]*\\.(jpg|jpeg|png|webp|mp4|webm)$",
+      "x-erreur": "nom de fichier invalide (minuscules, chiffres, tirets ; .jpg, .png, .webp, .mp4, .webm)"
+    },
+    "gps": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["latitude", "longitude"],
+      "properties": {
+        "latitude": { "type": "number", "minimum": -90, "maximum": 90, "x-erreur": "position GPS invalide : latitude de -90 à 90 (ex. 14.7167)" },
+        "longitude": { "type": "number", "minimum": -180, "maximum": 180, "x-erreur": "position GPS invalide : longitude de -180 à 180 (ex. -17.4677)" }
+      }
+    },
+    "heure": {
+      "type": "string",
+      "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$",
+      "x-erreur": "heure invalide (format HH:mm, de 00:00 à 23:59)"
+    },
+    "jour": {
+      "enum": ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"],
+      "x-erreur": "jour inconnu (attendu : lundi … dimanche)"
+    },
+    "horaireJour": {
+      "oneOf": [
+        { "const": "ferme" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["ouverture", "fermeture"],
+          "properties": {
+            "ouverture": { "$ref": "#/$defs/heure" },
+            "fermeture": { "$ref": "#/$defs/heure" }
+          }
+        }
+      ],
+      "x-erreur": "attendu \"ferme\" ou { \"ouverture\": \"08:00\", \"fermeture\": \"23:00\" } (fermeture avant l'ouverture : après minuit)"
+    },
+    "horaires": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"],
+      "properties": {
+        "lundi": { "$ref": "#/$defs/horaireJour" },
+        "mardi": { "$ref": "#/$defs/horaireJour" },
+        "mercredi": { "$ref": "#/$defs/horaireJour" },
+        "jeudi": { "$ref": "#/$defs/horaireJour" },
+        "vendredi": { "$ref": "#/$defs/horaireJour" },
+        "samedi": { "$ref": "#/$defs/horaireJour" },
+        "dimanche": { "$ref": "#/$defs/horaireJour" }
+      }
+    },
+    "cle": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{0,59}$",
+      "x-erreur": "clé invalide (minuscules, chiffres et tirets ; elle ne doit plus changer une fois déployée)"
+    },
+    "montant": {
+      "type": "integer",
+      "minimum": 0,
+      "x-erreur": "montant invalide : nombre entier de F CFA, positif ou nul"
+    }
+  }
+}

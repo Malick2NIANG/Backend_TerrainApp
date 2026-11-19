@@ -1,0 +1,4 @@
+[
+  { "cle": "lancement-test", "titre": "Ouverture test", "publiee": false,
+    "slides": [{ "titre": "Bienvenue", "message": "Arena Test ouvre ses portes.", "media": "ouverture.jpg" }] }
+]

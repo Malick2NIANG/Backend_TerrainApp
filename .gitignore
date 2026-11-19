@@ -10,3 +10,8 @@ target/
 
 # Tests de charge : rapports k6, journaux et metriques de chaque passage
 load-tests/resultats/
+
+# Deploiements produits par npm run client : contiennent des secrets (.env)
+deploiements/
+# Outil de personnalisation
+outils/personnaliser/node_modules/
