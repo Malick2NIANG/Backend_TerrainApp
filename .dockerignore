@@ -1,0 +1,7 @@
+target/
+.git/
+deploiements/
+clients/
+outils/
+load-tests/
+.env

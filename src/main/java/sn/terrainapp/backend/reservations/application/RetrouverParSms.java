@@ -11,7 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 import sn.terrainapp.backend.commun.erreurs.RequeteInvalideException;
 import sn.terrainapp.backend.commun.erreurs.TropDeTentativesException;
 import sn.terrainapp.backend.commun.telephone.Telephone;
-import sn.terrainapp.backend.marque.Marque;
+import sn.terrainapp.backend.complexe.IdentiteComplexe;
 import sn.terrainapp.backend.reservations.application.SuiviReservations.ReservationRetrouvee;
 import sn.terrainapp.backend.reservations.domaine.CodeRecuperation;
 import sn.terrainapp.backend.reservations.infrastructure.CodeRecuperationRepository;
@@ -34,11 +34,11 @@ public class RetrouverParSms {
     private final ReservationRepository reservations;
     private final SuiviReservations suivi;
     private final EnvoiSms sms;
-    private final Marque marque;
+    private final IdentiteComplexe marque;
     private final Clock horloge;
 
     public RetrouverParSms(CodeRecuperationRepository codes, ReservationRepository reservations, SuiviReservations suivi,
-                           EnvoiSms sms, Marque marque, Clock horloge) {
+                           EnvoiSms sms, IdentiteComplexe marque, Clock horloge) {
         this.codes = codes;
         this.reservations = reservations;
         this.suivi = suivi;

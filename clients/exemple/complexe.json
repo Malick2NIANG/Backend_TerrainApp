@@ -1,0 +1,67 @@
+{
+  "$schema": "../../outils/personnaliser/schema/complexe.schema.json",
+  "identifiant": "exemple",
+  "marque": {
+    "nom": "Arena Exemple",
+    "nomAccent": "Exemple",
+    "initiales": "AE",
+    "nomComplexe": "Complexe sportif Arena Exemple",
+    "slogan": "Votre terrain, réservé en une minute.",
+    "sousTitre": "Réservation en ligne · Thiès",
+    "couleurs": {
+      "principale": "#0F766E",
+      "foncee": "#0B4F4A",
+      "claire": "#5EEAD4"
+    },
+    "logo": "logo.svg",
+    "imageAccueil": "accueil.jpg"
+  },
+  "contact": {
+    "telephone": "+221 33 951 00 00",
+    "whatsapp": "+221 77 000 00 00",
+    "email": "contact@arena-exemple.sn",
+    "adresse": "Route de Dakar, en face de la station",
+    "ville": "Thiès",
+    "gps": { "latitude": 14.7910, "longitude": -16.9256 },
+    "reseauxSociaux": {
+      "facebook": "https://www.facebook.com/arena.exemple",
+      "instagram": "https://www.instagram.com/arena.exemple",
+      "tiktok": "https://www.tiktok.com/@arena.exemple"
+    }
+  },
+  "support": {
+    "telephone": "+221 77 000 00 01",
+    "email": "support@arena-exemple.sn"
+  },
+  "horaires": {
+    "lundi":    { "ouverture": "08:00", "fermeture": "23:00" },
+    "mardi":    { "ouverture": "08:00", "fermeture": "23:00" },
+    "mercredi": { "ouverture": "08:00", "fermeture": "23:00" },
+    "jeudi":    { "ouverture": "08:00", "fermeture": "23:00" },
+    "vendredi": { "ouverture": "08:00", "fermeture": "01:00" },
+    "samedi":   { "ouverture": "08:00", "fermeture": "01:00" },
+    "dimanche": { "ouverture": "09:00", "fermeture": "22:00" }
+  },
+  "paiement": {
+    "moyens": ["wave", "orange-money", "mixx-yas"]
+  },
+  "reservation": {
+    "pasCreneauMinutes": 30,
+    "delaiAnnulationHeures": 24,
+    "margeEntreeMinutes": 30
+  },
+  "documents": {
+    "nomSurTickets": "ARENA EXEMPLE",
+    "piedDeRecu": "Merci et bon match à l'Arena Exemple !"
+  },
+  "textes": {
+    "accueilTitre": "Votre terrain, réservé en une minute.",
+    "accueilSousTitre": "Trois terrains éclairés au cœur de Thiès",
+    "aPropos": "Terrains de foot à 5 et à 7, court de padel, vestiaires et parking gardé. Ouvert tous les jours, jusqu'à 1 h le week-end."
+  },
+  "deploiement": {
+    "urlClient": "https://reserver.arena-exemple.sn",
+    "urlManager": "https://gestion.arena-exemple.sn",
+    "version": "1.0.0"
+  }
+}

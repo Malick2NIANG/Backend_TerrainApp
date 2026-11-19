@@ -4,7 +4,6 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -40,12 +39,12 @@ public class ControleTickets {
 
     public ControleTickets(ReservationRepository reservations, EvenementSortantRepository evenements,
                            JournalActions journal, Clock horloge,
-                           @Value("${app.ticket.marge-avant-minutes:30}") long margeAvantMinutes) {
+                           sn.terrainapp.backend.complexe.IdentiteComplexe identite) {
         this.reservations = reservations;
         this.evenements = evenements;
         this.journal = journal;
         this.horloge = horloge;
-        this.margeAvant = Duration.ofMinutes(margeAvantMinutes);
+        this.margeAvant = Duration.ofMinutes(identite.margeEntreeMinutes());
     }
 
     @Transactional

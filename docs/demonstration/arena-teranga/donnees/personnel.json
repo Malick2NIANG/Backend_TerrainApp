@@ -1,0 +1,4 @@
+[
+  { "identifiant": "awa.gerante", "role": "GERANT", "prenom": "Awa", "nom": "Ndiaye" },
+  { "identifiant": "controle", "role": "CONTROLEUR", "prenom": "Moussa", "nom": "Sarr" }
+]

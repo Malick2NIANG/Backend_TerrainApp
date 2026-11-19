@@ -1,0 +1,10 @@
+[
+  {
+    "cle": "terrain-config-a", "sport": "foot5-config", "nom": "Terrain Config A",
+    "description": "Terrain charge depuis le dossier du complexe.", "localite": "Thiès",
+    "surface": "Gazon synthétique", "capacite": 10, "equipements": ["Éclairage", "Vestiaires"],
+    "photos": ["terrain-a.jpg"], "tarifHeure": 12000, "dureesProposees": [60, 90],
+    "plages": [{ "libelle": "Soirée", "jours": ["lundi", "mardi", "mercredi", "jeudi", "vendredi"], "debut": "18:00", "fin": "23:00", "tarifHeure": 15000 }],
+    "publie": true, "ordre": 1
+  }
+]

@@ -19,6 +19,12 @@ public class UrlImageValidator implements ConstraintValidator<UrlImage, String> 
      */
     private static final Pattern IMAGE_DES_FRONTS =
             Pattern.compile("^/images/[a-z0-9][a-z0-9/_-]*\\.(jpg|jpeg|png|webp)$");
+    /**
+     * Image du dossier du complexe (assets/ de clients/&lt;id&gt;/, servie par les
+     * fronts sous /marque/ : photos des terrains, annonces de lancement).
+     */
+    private static final Pattern IMAGE_DU_COMPLEXE =
+            Pattern.compile("^/marque/[a-z0-9][a-z0-9/_-]*\\.(jpg|jpeg|png|webp)$");
 
     @Override
     public boolean isValid(String valeur, ConstraintValidatorContext contexte) {
@@ -32,7 +38,8 @@ public class UrlImageValidator implements ConstraintValidator<UrlImage, String> 
         if (valeur.length() > LONGUEUR_MAX) {
             return false;
         }
-        if (PHOTO_LOCALE.matcher(valeur).matches() || IMAGE_DES_FRONTS.matcher(valeur).matches()) {
+        if (PHOTO_LOCALE.matcher(valeur).matches() || IMAGE_DES_FRONTS.matcher(valeur).matches()
+                || IMAGE_DU_COMPLEXE.matcher(valeur).matches()) {
             return true;
         }
         try {

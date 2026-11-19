@@ -1,0 +1,155 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://terrainapp.sn/schema/donnees.schema.json",
+  "title": "Données initiales d'un complexe (donnees/*.json)",
+  "description": "Chargées une seule fois par le backend (rejouable sans doublon). Chaque élément a une clé stable.",
+  "$defs": {
+    "sports": {
+      "title": "donnees/sports.json",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["cle", "nom"],
+        "properties": {
+          "cle": { "$ref": "complexe.schema.json#/$defs/cle" },
+          "nom": { "type": "string", "minLength": 1, "maxLength": 60 },
+          "ordre": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    "terrains": {
+      "title": "donnees/terrains.json",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["cle", "sport", "nom", "capacite", "tarifHeure"],
+        "properties": {
+          "cle": { "$ref": "complexe.schema.json#/$defs/cle" },
+          "sport": { "type": "string", "description": "Clé d'un sport de donnees/sports.json." },
+          "nom": { "type": "string", "minLength": 1, "maxLength": 80 },
+          "description": { "type": "string", "maxLength": 1000 },
+          "localite": { "type": "string", "maxLength": 120 },
+          "gps": { "$ref": "complexe.schema.json#/$defs/gps" },
+          "surface": { "type": "string", "maxLength": 60 },
+          "capacite": { "type": "integer", "minimum": 1, "maximum": 100, "x-erreur": "capacité invalide (nombre de joueurs, de 1 à 100)" },
+          "equipements": { "type": "array", "maxItems": 15, "items": { "type": "string", "minLength": 1, "maxLength": 40 } },
+          "photos": {
+            "type": "array", "maxItems": 10,
+            "items": { "$ref": "complexe.schema.json#/$defs/fichierMedia" },
+            "description": "Fichiers de assets/terrains/ ; la première est la couverture."
+          },
+          "tarifHeure": { "$ref": "complexe.schema.json#/$defs/montant" },
+          "dureesProposees": {
+            "type": "array", "minItems": 1, "maxItems": 6, "uniqueItems": true,
+            "items": {
+              "enum": [30, 60, 90, 120, 150, 180],
+              "x-erreur": "durée invalide (30, 60, 90, 120, 150 ou 180 minutes : de 30 min à 3 h)"
+            }
+          },
+          "plages": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["libelle", "jours", "debut", "fin", "tarifHeure"],
+              "properties": {
+                "libelle": { "type": "string", "minLength": 1, "maxLength": 60 },
+                "jours": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "complexe.schema.json#/$defs/jour" } },
+                "debut": { "$ref": "complexe.schema.json#/$defs/heure" },
+                "fin": { "$ref": "complexe.schema.json#/$defs/heure" },
+                "tarifHeure": { "$ref": "complexe.schema.json#/$defs/montant" }
+              }
+            }
+          },
+          "horaires": { "$ref": "complexe.schema.json#/$defs/horaires" },
+          "publie": { "type": "boolean" },
+          "ordre": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    "abonnements": {
+      "title": "donnees/abonnements.json",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["cle", "terrain", "client", "frequence", "premiereSeance", "nombreSeances", "reglement"],
+        "properties": {
+          "cle": { "$ref": "complexe.schema.json#/$defs/cle" },
+          "terrain": { "type": "string", "description": "Clé d'un terrain de donnees/terrains.json." },
+          "client": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["nom", "telephone"],
+            "properties": {
+              "nom": { "type": "string", "minLength": 1, "maxLength": 80 },
+              "telephone": { "$ref": "complexe.schema.json#/$defs/telephone" }
+            }
+          },
+          "frequence": { "enum": ["HEBDOMADAIRE", "MENSUELLE"], "x-erreur": "fréquence invalide (HEBDOMADAIRE ou MENSUELLE)" },
+          "jours": { "type": "array", "uniqueItems": true, "items": { "$ref": "complexe.schema.json#/$defs/jour" } },
+          "premiereSeance": {
+            "type": "string",
+            "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T([01][0-9]|2[0-3]):[0-5][0-9]$",
+            "x-erreur": "date et heure invalides (ex. 2026-12-01T19:00, heure du complexe)"
+          },
+          "nombreSeances": { "type": "integer", "minimum": 2, "maximum": 52 },
+          "reglement": { "enum": ["AVANCE", "SEANCE"], "x-erreur": "règlement invalide (AVANCE ou SEANCE)" },
+          "moyenPaiement": { "enum": ["wave", "orange-money", "mixx-yas", "carte", "especes"] },
+          "remise": { "$ref": "complexe.schema.json#/$defs/montant" }
+        }
+      }
+    },
+    "annonces": {
+      "title": "donnees/annonces.json",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["cle", "titre", "slides"],
+        "properties": {
+          "cle": { "$ref": "complexe.schema.json#/$defs/cle" },
+          "titre": { "type": "string", "minLength": 1, "maxLength": 80 },
+          "publiee": { "type": "boolean" },
+          "slides": {
+            "type": "array", "minItems": 1, "maxItems": 10,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["titre"],
+              "properties": {
+                "titre": { "type": "string", "minLength": 1, "maxLength": 80 },
+                "message": { "type": "string", "maxLength": 300 },
+                "media": { "$ref": "complexe.schema.json#/$defs/fichierMedia", "description": "Fichier de assets/annonces/." }
+              }
+            }
+          }
+        }
+      }
+    },
+    "personnel": {
+      "title": "donnees/personnel.json",
+      "description": "Comptes initiaux. Pas de mot de passe : un code d'activation à usage unique est produit par npm run client.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["identifiant", "role"],
+        "properties": {
+          "identifiant": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9._-]{2,39}$",
+            "x-erreur": "identifiant invalide (minuscules, chiffres, point ou tiret, 3 à 40 caractères)"
+          },
+          "role": { "enum": ["GERANT", "ACCUEIL", "CONTROLEUR", "ADMIN"], "x-erreur": "rôle invalide (GERANT, ACCUEIL, CONTROLEUR ou ADMIN)" },
+          "prenom": { "type": "string", "maxLength": 60 },
+          "nom": { "type": "string", "maxLength": 60 },
+          "telephone": { "$ref": "complexe.schema.json#/$defs/telephone" },
+          "motDePasse": { "not": {}, "x-erreur": "aucun mot de passe dans le dossier : le compte reçoit un code d'activation à usage unique" }
+        }
+      }
+    }
+  }
+}

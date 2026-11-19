@@ -1,0 +1,5 @@
+[
+  { "cle": "foot-5", "nom": "Football à 5", "ordre": 1 },
+  { "cle": "foot-7", "nom": "Football à 7", "ordre": 2 },
+  { "cle": "padel", "nom": "Padel", "ordre": 3 }
+]

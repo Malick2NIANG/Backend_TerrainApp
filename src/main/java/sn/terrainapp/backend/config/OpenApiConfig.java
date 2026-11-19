@@ -9,10 +9,10 @@ import org.springframework.context.annotation.Configuration;
 public class OpenApiConfig {
 
     @Bean
-    public OpenAPI terrainAppOpenAPI() {
+    public OpenAPI terrainAppOpenAPI(sn.terrainapp.backend.complexe.IdentiteComplexe identite) {
         return new OpenAPI()
                 .info(new Info()
-                        .title("TerrainApp API")
+                        .title(identite.nom() + " API")
                         .description("API du backend TerrainApp — authentification, terrains, reservations, paiements.")
                         .version("v1"));
     }

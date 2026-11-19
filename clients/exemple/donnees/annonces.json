@@ -1,0 +1,11 @@
+[
+  {
+    "cle": "ouverture",
+    "titre": "Ouverture",
+    "publiee": true,
+    "slides": [
+      { "titre": "Bienvenue à l'Arena Exemple", "message": "Réservez votre terrain en une minute et payez par Wave, Orange Money ou Mixx : votre ticket QR arrive tout de suite.", "media": "ouverture.jpg" },
+      { "titre": "Soirées à prix doux", "message": "Du lundi au jeudi, le Padel 1 est à 10 000 F l'heure toute la journée." }
+    ]
+  }
+]

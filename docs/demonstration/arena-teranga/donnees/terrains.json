@@ -1,0 +1,10 @@
+[
+  { "cle": "terrain-plage", "sport": "beach-soccer", "nom": "Terrain Plage", "description": "Sable fin, face à la mer : le match au coucher du soleil.",
+    "localite": "Saly Portudal", "surface": "Sable", "capacite": 10, "equipements": ["Éclairage", "Douches", "Bar"],
+    "photos": ["plage-1.jpg"], "tarifHeure": 18000, "dureesProposees": [60, 120],
+    "plages": [{ "libelle": "Coucher de soleil", "jours": ["vendredi", "samedi"], "debut": "18:00", "fin": "21:00", "tarifHeure": 24000 }],
+    "publie": true, "ordre": 1 },
+  { "cle": "terrain-baobab", "sport": "foot-7", "nom": "Terrain Baobab", "description": "Gazon synthétique à l'ombre du grand baobab, idéal pour les tournois.",
+    "localite": "Saly Portudal", "surface": "Gazon synthétique", "capacite": 14, "equipements": ["Éclairage", "Vestiaires", "Parking"],
+    "photos": ["baobab-1.jpg", "baobab-2.jpg"], "tarifHeure": 30000, "dureesProposees": [60, 120, 180], "publie": true, "ordre": 2 }
+]
